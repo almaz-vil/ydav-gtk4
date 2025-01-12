@@ -1,0 +1,27 @@
+#panel{
+    background-color: black;
+  }
+  
+  #label_log{
+    background-color: white;
+    font: 14px sans-serif;
+  }
+
+  #edit_ip{
+    margin-top: .5em;
+    margin-left: .5em;
+    border:  2px solid green;
+  }
+  
+  .info{
+    background-color:black;
+    color: white;
+    padding-right: .4em;
+  }
+
+  #statusbar{
+    background-color: black;
+    color: white;
+    border-top: 2px solid yellow;
+    margin-bottom: 2px;
+  }

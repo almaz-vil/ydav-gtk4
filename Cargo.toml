@@ -1,0 +1,11 @@
+[package]
+name = "ydav-gtk4"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+gtk4= { version = "0.9.5", features = ["v4_12"] }
+gdk4="0.9.5"
+serde_json="*"
+serde = { version = "*", features = ["derive"] }
+async-channel = "2.3.1"
