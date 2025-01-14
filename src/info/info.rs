@@ -1,7 +1,8 @@
 use serde::{Deserialize, Serialize};
 use std::net::TcpStream;
-use std::io::{self, BufRead, BufReader, Write};
+use std::io::{BufReader, Write};
 use serde_json::{from_str};
+use crate::read_json_android::ReadJsonAndroid;
 
 #[derive(Serialize, Deserialize)]
 ///Информация о параметрах активной мобильной связи
@@ -21,26 +22,21 @@ pub struct Battery{
     pub level: f64,
     pub status: String
 }
-#[derive(Serialize, Deserialize)]
-//Информация о вызовах
-pub struct Phone{
-    pub time: String,
-    pub phone: String,
-    pub status: String
-}
+
 #[derive(Serialize, Deserialize)]
 //Структура для сериализации полученного json плюс время с устройства
-pub struct Info{
+pub struct Phones {
     pub time: String,
     pub battery: Battery,
-    pub signal: Signal,
-    pub phone: Vec<Phone>
+    pub signal: Signal
 }
 pub struct InfoLog{
-    pub info: Info,
+    pub info: Phones,
     pub json: String
 }
 
+impl ReadJsonAndroid for InfoLog{
+}
 impl InfoLog{
     pub  fn connect(address: String)->Result<InfoLog, String>{
         let signal = Signal{
@@ -57,11 +53,10 @@ impl InfoLog{
             level:0.0,
             status:"".to_string()
         };
-        let info = Info{
+        let info = Phones {
             time: "".to_string(),
             battery,
-            signal,
-            phone: vec![]
+            signal
         };
         let mut info_log = InfoLog{
             info,
@@ -69,16 +64,15 @@ impl InfoLog{
         };
         match TcpStream::connect(address) {
             Ok(mut stream) => {
-                stream.write(b"Hello from client!\n").unwrap();
+                stream.write(b"INFO\n").unwrap();
                 let reader = BufReader::new(stream.try_clone().expect("error"));
                 let str_json= match InfoLog::read_json(reader){
                     Ok(d)=>d,
                     Err(e)=> return Err(String::from( format!("Ошибка чтения: {}", e)))
                 };
-                let deserialized_info: Info= match from_str(&str_json){
+                let deserialized_info = match from_str(&str_json){
                     Ok(info)=>info,
                     Err(e)=> {
-                        println!("{}", str_json);
                         return Err(String::from( format!("Ошибка сериализации: {}", e)));}
                 
                 };
@@ -90,29 +84,6 @@ impl InfoLog{
             }
         }
         Ok(info_log)
-    }
-
-
-
-    fn read_json(mut rad: BufReader<TcpStream>)-> io::Result<String>{
-        let mut res_line = String::new();
-
-        // Индикатор того, что хедеры были прочитаны
-        loop {
-            let mut buf_line = String::new();
-            match rad.read_line(&mut buf_line) {
-                Err(e) => panic!("Got an error: {}", e),
-                Ok(0) => panic!("Got an error: "),
-                Ok(_) => (),
-            };
-
-            res_line.push_str(&buf_line);
-            if res_line.contains("}\n"){
-                break;
-            }
-        }
-        Ok(res_line)
-
     }
 }
 
