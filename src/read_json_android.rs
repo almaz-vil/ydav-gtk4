@@ -1,17 +1,57 @@
-use std::io;
-use std::io::{BufRead, BufReader};
+use std::io::{BufRead, BufReader, Write};
 use std::net::TcpStream;
+use serde::Deserialize;
+use serde_json::from_str;
 
+pub enum CommandSend{
+    INFO,
+    PHONE,
+    CONTACT,
+}
+
+impl CommandSend {
+    fn str_b(self)->String{
+        match self {
+            CommandSend::INFO => {"INFO\n".to_string()}
+            CommandSend::PHONE => { "PHONE\n".to_string()}
+            CommandSend::CONTACT => { "CONTACT\n".to_string()}
+        }
+    }
+}
 pub trait ReadJsonAndroid{
-    fn read_json(mut rad: BufReader<TcpStream>)-> io::Result<String>{
+      fn connect<T: Default+ReadJsonAndroid+for<'a>Deserialize<'a>>(address: String, com: CommandSend)->Result<(T, String), String>{
+        match TcpStream::connect(address) {
+            Ok(mut stream) => {
+                stream.write(com.str_b().as_bytes()).unwrap();
+                //stream.write(b"INFO\n").unwrap();
+                let reader = BufReader::new(stream.try_clone().expect("error"));
+                let str_json= match T::read_json(reader){
+                    Ok(d)=>d,
+                    Err(e)=> return Err(String::from( format!("Ошибка чтения: {}", e)))
+                };
+                match from_str(&str_json) {
+                    Ok(info) => {
+                       Ok((info, str_json))
+                    }
+                    Err(e) => {
+                        Err(String::from(format!("Ошибка сериализации: {}", e)))
+                    }
+                }
+            }
+            Err(e) => {
+               Err(String::from( format!("Ошибка соединения: {}", e)))
+            }
+        }
+    }
+    fn read_json(mut rad: BufReader<TcpStream>)-> Result<String, String>{
         let mut res_line = String::new();
 
         // Индикатор того, что хедеры были прочитаны
         loop {
             let mut buf_line = String::new();
             match rad.read_line(&mut buf_line) {
-                Err(e) => panic!("Got an error: {}", e),
-                Ok(0) => panic!("Got an error: "),
+                Err(e) => return Err(String::from( format!("Ошибка чтения: {}", e))),
+                Ok(0) =>  return Err(String::from( "Ошибка чтения: EOF")),
                 Ok(_) => (),
             };
 
@@ -23,4 +63,5 @@ pub trait ReadJsonAndroid{
         Ok(res_line)
 
     }
+
 }

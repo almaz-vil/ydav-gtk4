@@ -2,6 +2,9 @@ mod info;
 mod phone;
 mod phone_object;
 mod read_json_android;
+mod contact;
+
+use crate::read_json_android::ReadJsonAndroid;
 
 use crate::info::{Info, Level};
 use gdk4 as gdk;
@@ -12,9 +15,8 @@ use gtk::{Application, ApplicationWindow};
 use gtk4 as gtk;
 use gtk::{ColumnViewColumn, ListItem};
 use std::path::Path;
-
-
 use crate::phone::Phone;
+use crate::contact::Contact;
 
 fn main() {
     let app = Application::builder()
@@ -102,21 +104,6 @@ fn build_ui(app: &Application) {
 
     gtk_box_horizontal.set_visible(false);
     gtk_box_horizontal2.set_visible(false);
-
-    let listbox = gtk::ListBox::new();
-    let flex_box_list=gtk::Box::builder()
-        .orientation(gtk::Orientation::Vertical)
-        .build();
-    let button_list_get=gtk::Button::builder()
-        .label("Запрос звонков")
-        .build();
-    flex_box_list.append(&button_list_get);
-    let scrolled_list=gtk::ScrolledWindow::builder()
-        .child(&listbox)
-        .height_request(250)
-        .propagate_natural_width(true)
-        .build();
-    flex_box_list.append(&scrolled_list);
     //*********
     let factory_phone = gtk::SignalListItemFactory::new();
     factory_phone.connect_setup( move |_, list_item| {
@@ -175,22 +162,51 @@ fn build_ui(app: &Application) {
 
     let selection_model = gtk::NoSelection::new(Some(model_phone_object.clone()));
 
-    let column_view = gtk::ColumnView::new(Some(selection_model));
+    let column_view_phone = gtk::ColumnView::new(Some(selection_model));
 
-    column_view.append_column(&column_phone);
-    column_view.append_column(&column_time);
+    column_view_phone.append_column(&column_time);
+    column_view_phone.append_column(&column_phone);
+
+    let flex_box_list=gtk::Box::builder()
+        .orientation(gtk::Orientation::Vertical)
+        .build();
+    let button_list_get=gtk::Button::builder()
+        .label("Запрос звонков")
+        .build();
+    flex_box_list.append(&button_list_get);
+    let scrolled_list=gtk::ScrolledWindow::builder()
+        .child(&column_view_phone)
+        .height_request(250)
+        .propagate_natural_width(true)
+        .build();
+    flex_box_list.append(&scrolled_list);
+
 
     let listbox_log = gtk::ListBox::new();
     let flex_box_log=gtk::Box::default();
     let scrolled_log=gtk::ScrolledWindow::builder()
-        .child(&column_view)
+        .child(&listbox_log)
         .height_request(250)
         .propagate_natural_width(true)
         .build();
     flex_box_log.append(&scrolled_log);
 
+    let listbox_contact = gtk::ListBox::new();
+    let button_contact_get=gtk::Button::builder()
+        .label("Запрос контактов")
+        .build();
+    let flex_box_contact=gtk::Box::default();
+    flex_box_contact.append(&button_contact_get);
+    let scrolled_contact=gtk::ScrolledWindow::builder()
+        .child(&listbox_contact)
+        .height_request(250)
+        .propagate_natural_width(true)
+        .build();
+    flex_box_contact.append(&scrolled_contact);
+
     stack.add_titled(&gtk_box_g, Some("6"),"Сигнал и батарейка");
     stack.add_titled(&flex_box_list,Some("8"),"✆Входящие звонки");
+    stack.add_titled(&flex_box_contact,Some("8"),"Контакты");
     stack.add_titled(&flex_box_log,Some("7"),"✎Лог");
     let stack_switcher = gtk::StackSwitcher::builder()
         .stack(&stack)
@@ -248,22 +264,41 @@ fn build_ui(app: &Application) {
             }
         };
         times_phone.set_markup(format!("{}", phone.phones.time).as_str());
-        listbox.remove_all();
         model_phone_object.remove_all();
         for phone in &phone.phones.phone{
             let d= phone_object::PhoneObject::new();
             d.set_property("time",phone.time.to_value());
-            d.set_property("phone",format!("tel: {}", phone.phone));
+            let str_status = match phone.status.as_str() {
+                "IDLE"=>"📱",
+                "RINGING"=>"📲",
+                _=>""
+
+            };
+            d.set_property("phone",format!("{} {}", phone.phone, str_status));
             model_phone_object.append(&d);
-
-            let s=if phone.status.len()>2{
-                format!("{}\t{}\n{}", phone.time, phone.phone, phone.status)
-            } else {format!("{}\t{}", phone.time, phone.phone)};
-
-            let label = gtk::Label::new(Some(&s));
-            listbox.append(&label);
         }
+    });
 
+    let sender_info_contact = sender.clone();
+    let times_contact = times.clone();
+    let address_ip = edit_ip_address.text().to_string().clone();
+    button_contact_get.connect_clicked(move |b|{
+        b.set_label("Запрос послан");
+        let contact = match Contact::connect(address_ip.clone()){
+            Ok(contact)=> contact,
+            Err(error)=>{
+                times_contact.set_markup(format!("{}", error).as_str());
+                let sender = sender_info_contact.clone();
+                sender.send_blocking(true).unwrap();
+                return
+            }
+        };
+        times_contact.set_markup(format!("{}", contact.contacts.time).as_str());
+        listbox_contact.remove_all();
+        for contact in &contact.contacts.contact{
+            let label = gtk::Label::new(Some(format!("{}{}", contact.name, contact.phone).as_str()));
+            listbox_contact.append(&label);
+        }
     });
 
 
@@ -271,7 +306,7 @@ fn build_ui(app: &Application) {
     let address = edit_ip_address.text().to_string().clone();
     let times_log= times.clone();
     let regular_monitoring_info= move ||{
-        let log = match Info::connect(address.clone()) {
+        let log= match Info::connect(address.clone()) {
             Ok(info)=>{
                 gtk_box_horizontal.set_visible(true);
                 gtk_box_horizontal2.set_visible(true);
@@ -285,10 +320,7 @@ fn build_ui(app: &Application) {
                 sender.send_blocking(true).unwrap();
                 return ControlFlow::Break
             }
-
-
         };
-
         label_battery_level.set_markup(format!("🔋 {}%", level.get_str(log.info.battery.level)).as_str());
         label_battery_temperature.set_markup(format!("🌡{}°C", level_tep.get_str(log.info.battery.temperature)).as_str());
         label_battery_status.set_markup(format!("{}", log.info.battery.status).as_str());
@@ -301,8 +333,8 @@ fn build_ui(app: &Application) {
         label_rssi.set_markup(format!("RSSI: {}", log.info.signal.rssi).as_str());
         times_log.set_markup(format!("🕰{}", log.info.time).as_str());
         //
-        // let label_log=gtk::Label::new(Some(format!("Лог:{}", log.json).as_str()));
-        //listbox_log.append(&label_log);
+        let label_log=gtk::Label::new(Some(format!("Лог:{}", log.json).as_str()));
+        listbox_log.append(&label_log);
         let flag_regular_monitoring_info =edit_ip_address.get_visible();
         if flag_regular_monitoring_info ==false{ return ControlFlow::Continue
         };
