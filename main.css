@@ -25,3 +25,7 @@
     border-top: 2px solid yellow;
     margin-bottom: 2px;
   }
+
+  #label_count_contact{
+    background-color: white;
+  }

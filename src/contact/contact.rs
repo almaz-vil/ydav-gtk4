@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 //Информация о вызовах
 pub struct Contact{
     pub name: String,
-    pub phone: String
+    pub phone: Vec<String>
 }
 
 #[derive(Serialize, Deserialize, Default)]

@@ -3,8 +3,7 @@ mod phone;
 mod phone_object;
 mod read_json_android;
 mod contact;
-
-use crate::read_json_android::ReadJsonAndroid;
+mod contact_object;
 
 use crate::info::{Info, Level};
 use gdk4 as gdk;
@@ -15,6 +14,8 @@ use gtk::{Application, ApplicationWindow};
 use gtk4 as gtk;
 use gtk::{ColumnViewColumn, ListItem};
 use std::path::Path;
+use gtk4::Justification;
+use gtk4::Orientation::Vertical;
 use crate::phone::Phone;
 use crate::contact::Contact;
 
@@ -82,8 +83,7 @@ fn build_ui(app: &Application) {
     edit_ip_address.set_widget_name("edit_ip");
     
     let gtk_box_g=gtk::Box::builder()
-       .orientation(gtk::Orientation::Vertical)
-      //  .valign(gtk::Align::Fill)
+       .orientation(Vertical)
        .build();
     let stack = gtk::Stack::new();
 
@@ -104,11 +104,77 @@ fn build_ui(app: &Application) {
 
     gtk_box_horizontal.set_visible(false);
     gtk_box_horizontal2.set_visible(false);
-    //*********
+    //****Контакты********************************************************************************
+    let factory_contact_phone = gtk::SignalListItemFactory::new();
+    factory_contact_phone.connect_setup( move |_, list_item| {
+        let label = gtk::Label::builder().build();
+        label.set_justify(Justification::Left);
+        list_item
+            .downcast_ref::<ListItem>()
+            .expect("error")
+            .set_child(Some(&label));
+    });
+    factory_contact_phone.connect_bind(move |_, list_item| {
+        let data = list_item
+            .downcast_ref::<ListItem>()
+            .expect("Needs to be ListItem")
+            .item()
+            .and_downcast::<contact_object::ContactObject>()
+            .expect("The item has to be an `IntegerObject`.");
+        let label = list_item
+            .downcast_ref::<ListItem>()
+            .expect("Needs to be ListItem")
+            .child()
+            .and_downcast::<gtk::Label>()
+            .expect("The child has to be a `Label`.");
+        label.set_justify(Justification::Left);
+        label.set_label(data.property::<String>("phone").as_str());
+    });
+    let column_contact_phone =ColumnViewColumn::new(Some("Телефонные номера"), Some(factory_contact_phone));
+    let factory_contact_name = gtk::SignalListItemFactory::new();
+    factory_contact_name.connect_setup(move |_, list_item| {
+        let label = gtk::Label::new(None);
+        label.set_justify(Justification::Left);
+        list_item
+            .downcast_ref::<ListItem>()
+            .expect("error")
+            .set_child(Some(&label));
+    });
+    factory_contact_name.connect_bind(move |_, list_item| {
+        let data = list_item
+            .downcast_ref::<ListItem>()
+            .expect("Needs to be ListItem")
+            .item()
+            .and_downcast::<contact_object::ContactObject>()
+            .expect("The item has to be an `IntegerObject`.");
+        let label = list_item
+            .downcast_ref::<ListItem>()
+            .expect("Needs to be ListItem")
+            .child()
+            .and_downcast::<gtk::Label>()
+            .expect("The child has to be a `Label`.");
+        label.set_justify(Justification::Left);
+        label.set_label(data.property::<String>("name").as_str());
+    });
+    let column_contact_name =ColumnViewColumn::new(Some("Имя"), Some(factory_contact_name));
+    let model_contact_object: gtk::gio::ListStore = gtk::gio::ListStore::new::<contact_object::ContactObject>();
+    let no_selection_contact_model = gtk::NoSelection::new(Some(model_contact_object.clone()));
+    let selection_contact_model = gtk::SingleSelection::new(Some(no_selection_contact_model));
+
+    selection_contact_model.connect_selection_changed(|x, i, i1| {
+        let select_contact=x.item(x.selected())
+            .and_downcast::<contact_object::ContactObject>()
+            .expect("The item has to be an `IntegerObject`.");
+        println!("{}{}", select_contact.property::<String>("name"), select_contact.property::<String>("phone"));
+    });
+    let column_view_contact = gtk::ColumnView::new(Some(selection_contact_model));
+    column_view_contact.append_column(&column_contact_name);
+    column_view_contact.append_column(&column_contact_phone);
+
+    //*********Входящие вызовы ***********************************************
     let factory_phone = gtk::SignalListItemFactory::new();
     factory_phone.connect_setup( move |_, list_item| {
         let label = gtk::Label::builder().build();
-        label.set_label("?o");
         list_item
             .downcast_ref::<ListItem>()
             .expect("error")
@@ -128,9 +194,7 @@ fn build_ui(app: &Application) {
             .and_downcast::<gtk::Label>()
             .expect("The child has to be a `Label`.");
         label.set_label(data.property::<String>("phone").as_str());
-
     });
-
     let column_phone=ColumnViewColumn::new(Some("Телефонный номер"),Some(factory_phone));
     let factory_time = gtk::SignalListItemFactory::new();
     factory_time.connect_setup(move |_, list_item| {
@@ -153,17 +217,12 @@ fn build_ui(app: &Application) {
             .child()
             .and_downcast::<gtk::Label>()
             .expect("The child has to be a `Label`.");
-
         label.set_label(data.property::<String>("time").as_str());
     });
     let column_time =ColumnViewColumn::new(Some("Время"), Some(factory_time));
-
     let model_phone_object: gtk::gio::ListStore = gtk::gio::ListStore::new::<phone_object::PhoneObject>();
-
     let selection_model = gtk::NoSelection::new(Some(model_phone_object.clone()));
-
     let column_view_phone = gtk::ColumnView::new(Some(selection_model));
-
     column_view_phone.append_column(&column_time);
     column_view_phone.append_column(&column_phone);
 
@@ -191,14 +250,17 @@ fn build_ui(app: &Application) {
         .build();
     flex_box_log.append(&scrolled_log);
 
-    let listbox_contact = gtk::ListBox::new();
     let button_contact_get=gtk::Button::builder()
         .label("Запрос контактов")
         .build();
-    let flex_box_contact=gtk::Box::default();
+    let flex_box_contact=gtk::Box::builder()
+        .orientation(Vertical).build();
     flex_box_contact.append(&button_contact_get);
+    let label_count_contact = gtk::Label::new(None);
+    label_count_contact.set_widget_name("label_count_contact");
+    flex_box_contact.append(&label_count_contact);
     let scrolled_contact=gtk::ScrolledWindow::builder()
-        .child(&listbox_contact)
+        .child(&column_view_contact)
         .height_request(250)
         .propagate_natural_width(true)
         .build();
@@ -266,16 +328,16 @@ fn build_ui(app: &Application) {
         times_phone.set_markup(format!("{}", phone.phones.time).as_str());
         model_phone_object.remove_all();
         for phone in &phone.phones.phone{
-            let d= phone_object::PhoneObject::new();
-            d.set_property("time",phone.time.to_value());
+            let phone_object = phone_object::PhoneObject::new();
+            phone_object.set_property("time", phone.time.to_value());
             let str_status = match phone.status.as_str() {
                 "IDLE"=>"📱",
                 "RINGING"=>"📲",
                 _=>""
 
             };
-            d.set_property("phone",format!("{} {}", phone.phone, str_status));
-            model_phone_object.append(&d);
+            phone_object.set_property("phone", format!("{} {}", phone.phone, str_status));
+            model_phone_object.append(&phone_object);
         }
     });
 
@@ -294,11 +356,17 @@ fn build_ui(app: &Application) {
             }
         };
         times_contact.set_markup(format!("{}", contact.contacts.time).as_str());
-        listbox_contact.remove_all();
+        model_contact_object.remove_all();
         for contact in &contact.contacts.contact{
-            let label = gtk::Label::new(Some(format!("{}{}", contact.name, contact.phone).as_str()));
-            listbox_contact.append(&label);
+            let r =contact.phone.iter().fold(String::new(), |mut s, w|{s.push_str(
+                format!("{} ",w.as_str()).as_str()
+            );s});
+            let contact_object = contact_object::ContactObject::new();
+            contact_object.set_property("name", contact.name.to_value());
+            contact_object.set_property("phone", r.to_value());
+            model_contact_object.append(&contact_object);
         }
+        label_count_contact.set_markup(format!(" У Вас контактов <b>{}</b>.", &contact.contacts.contact.len()).as_str());
     });
 
 
