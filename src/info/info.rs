@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
-use crate::read_json_android::{ReadJsonAndroid, CommandSend};
+use crate::read_json_android::{ReadJsonAndroid};
+use crate::send_command_android::CommandSend;
 
 #[derive(Serialize, Deserialize, Default)]
 ///Информация о параметрах активной мобильной связи

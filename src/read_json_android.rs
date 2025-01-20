@@ -2,22 +2,8 @@ use std::io::{BufRead, BufReader, Write};
 use std::net::TcpStream;
 use serde::Deserialize;
 use serde_json::from_str;
+use crate::send_command_android::CommandSend;
 
-pub enum CommandSend{
-    INFO,
-    PHONE,
-    CONTACT,
-}
-
-impl CommandSend {
-    fn str_b(self)->String{
-        match self {
-            CommandSend::INFO => {"INFO\n".to_string()}
-            CommandSend::PHONE => { "PHONE\n".to_string()}
-            CommandSend::CONTACT => { "CONTACT\n".to_string()}
-        }
-    }
-}
 pub trait ReadJsonAndroid{
       fn connect<T: Default+ReadJsonAndroid+for<'a>Deserialize<'a>>(address: String, com: CommandSend)->Result<(T, String), String>{
         match TcpStream::connect(address) {

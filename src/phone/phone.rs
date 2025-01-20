@@ -1,4 +1,5 @@
-use crate::read_json_android::{CommandSend, ReadJsonAndroid};
+use crate::read_json_android::ReadJsonAndroid;
+use crate::send_command_android::CommandSend;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Default)]
@@ -17,6 +18,7 @@ pub struct Phones{
 #[derive(Default)]
 pub struct PhoneLog{
     pub phones: Phones,
+    #[allow(dead_code)]
     pub json: String
 }
 

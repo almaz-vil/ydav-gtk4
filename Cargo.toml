@@ -9,3 +9,4 @@ gdk4="0.9.5"
 serde_json="*"
 serde = { version = "*", features = ["derive"] }
 async-channel = "2.3.1"
+sqlite = "0.36.1"

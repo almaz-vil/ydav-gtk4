@@ -4,20 +4,23 @@ mod phone_object;
 mod read_json_android;
 mod contact;
 mod contact_object;
+mod send_command_android;
 
+use crate::contact::Contact;
 use crate::info::{Info, Level};
+use crate::phone::Phone;
 use gdk4 as gdk;
 use gdk4::glib::{clone, ControlFlow};
 use gtk::glib;
 use gtk::prelude::*;
 use gtk::{Application, ApplicationWindow};
-use gtk4 as gtk;
 use gtk::{ColumnViewColumn, ListItem};
-use std::path::Path;
+use gtk4 as gtk;
 use gtk4::Justification;
 use gtk4::Orientation::Vertical;
-use crate::phone::Phone;
-use crate::contact::Contact;
+use std::io::{BufWriter, Write};
+use std::path::Path;
+use sqlite::State;
 
 fn main() {
     let app = Application::builder()
@@ -161,11 +164,20 @@ fn build_ui(app: &Application) {
     let no_selection_contact_model = gtk::NoSelection::new(Some(model_contact_object.clone()));
     let selection_contact_model = gtk::SingleSelection::new(Some(no_selection_contact_model));
 
-    selection_contact_model.connect_selection_changed(|x, i, i1| {
+    let connection = sqlite::open("data").unwrap();
+    let query = "SELECT name, phone FROM contact";
+    let mut statement = connection.prepare(query).unwrap();
+    while let Ok(State::Row) = statement.next() {
+        let contact_object = contact_object::ContactObject::new();
+        contact_object.set_property("name", statement.read::<String,_>("name").unwrap().as_str());
+        contact_object.set_property("phone", statement.read::<String,_>("phone").unwrap().as_str());
+        model_contact_object.append(&contact_object);
+
+    }
+    selection_contact_model.connect_selection_changed(|x, _i, _i1| {
         let select_contact=x.item(x.selected())
             .and_downcast::<contact_object::ContactObject>()
             .expect("The item has to be an `IntegerObject`.");
-        println!("{}{}", select_contact.property::<String>("name"), select_contact.property::<String>("phone"));
     });
     let column_view_contact = gtk::ColumnView::new(Some(selection_contact_model));
     column_view_contact.append_column(&column_contact_name);
@@ -253,9 +265,16 @@ fn build_ui(app: &Application) {
     let button_contact_get=gtk::Button::builder()
         .label("Запрос контактов")
         .build();
+    let button_contact_csv=gtk::Button::builder()
+        .label("Сохранить в формате CSV")
+        .build();
+    let csv_model_contact = model_contact_object.clone();
+
     let flex_box_contact=gtk::Box::builder()
         .orientation(Vertical).build();
     flex_box_contact.append(&button_contact_get);
+    flex_box_contact.append(&button_contact_csv);
+
     let label_count_contact = gtk::Label::new(None);
     label_count_contact.set_widget_name("label_count_contact");
     flex_box_contact.append(&label_count_contact);
@@ -289,6 +308,38 @@ fn build_ui(app: &Application) {
     load_css();
     // Show the window.
     window.present();
+    button_contact_csv.connect_clicked(move |_x1| {
+        let file_filter = gtk::FileFilter::new();
+        file_filter.add_pattern("*.csv");
+        file_filter.add_suffix("csv");
+        let save_dialog = gtk::FileDialog::builder()
+            .title("Файл для контактов")
+            .default_filter(&file_filter)
+            .build();
+        let cancellable =gtk::gio::Cancellable::new();
+        let value_csv_model_contact = csv_model_contact.clone();
+        save_dialog.save(Some(&window), Some(&cancellable), move |x2| {
+            let path_file = match x2 {
+                Ok(f)=>f.path(),
+                Err(e)=> panic!("{}",e)
+            };
+            let path = path_file.unwrap();
+            let file_contact_csv = std::fs::File::create(path).expect("Ошибка создания файла!");
+            let mut writer = BufWriter::new(file_contact_csv);
+            for object in value_csv_model_contact.into_iter(){
+                if let Ok(item) = object {
+                    let data = item.downcast_ref::<contact_object::ContactObject>()
+                        .expect("Item not ContactObject");
+                    let phohe =data.property::<String>("phone");
+                    let name =data.property::<String>("name");
+                    if let Err(e)= writer.write_all(format!("{}, {}", name, phohe).as_bytes()){
+                        println!("{}",e);
+                    }
+                }
+            }
+        });
+
+    });
     let mut level: Level = Level(f64::default());
     let mut level_tep: Level = Level(f64::default());
     let (sender, receiver) = async_channel::bounded(1);
@@ -356,7 +407,9 @@ fn build_ui(app: &Application) {
             }
         };
         times_contact.set_markup(format!("{}", contact.contacts.time).as_str());
-        model_contact_object.remove_all();
+        //model_contact_object.remove_all();
+        let mut sql =" DELETE FROM contact;
+        UPDATE sqlite_sequence SET seq=0 WHERE name='contact'; BEGIN TRANSACTION;".to_string();
         for contact in &contact.contacts.contact{
             let r =contact.phone.iter().fold(String::new(), |mut s, w|{s.push_str(
                 format!("{} ",w.as_str()).as_str()
@@ -365,10 +418,15 @@ fn build_ui(app: &Application) {
             contact_object.set_property("name", contact.name.to_value());
             contact_object.set_property("phone", r.to_value());
             model_contact_object.append(&contact_object);
+            sql=sql+format!("INSERT INTO contact (name, phone) VALUES (\"{}\", \"{}\");", contact.name, r).as_str();
         }
+        sql=sql+"COMMIT;";
         label_count_contact.set_markup(format!(" У Вас контактов <b>{}</b>.", &contact.contacts.contact.len()).as_str());
+        let connection = sqlite::open("data").unwrap();
+        if let Err(e)=connection.execute(sql){
+            println!("Ошибка {}", e);
+        }
     });
-
 
     let sender_info= sender.clone();
     let address = edit_ip_address.text().to_string().clone();
