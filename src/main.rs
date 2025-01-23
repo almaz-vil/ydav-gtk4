@@ -5,6 +5,8 @@ mod read_json_android;
 mod contact;
 mod contact_object;
 mod send_command_android;
+mod sms_input_object;
+mod sms_input;
 
 use crate::contact::Contact;
 use crate::info::{Info, Level};
@@ -18,9 +20,14 @@ use gtk::{ColumnViewColumn, ListItem};
 use gtk4 as gtk;
 use gtk4::Justification;
 use gtk4::Orientation::Vertical;
-use std::io::{BufWriter, Write};
+use std::io::{BufWriter, Read, Write};
 use std::path::Path;
 use sqlite::State;
+use std::net::{TcpListener, TcpStream};
+use std::sync::mpsc::sync_channel;
+use std::sync::mpsc::channel;
+use std::thread::spawn;
+use crate::sms_input::SmsInput;
 
 fn main() {
     let app = Application::builder()
@@ -237,7 +244,93 @@ fn build_ui(app: &Application) {
     let column_view_phone = gtk::ColumnView::new(Some(selection_model));
     column_view_phone.append_column(&column_time);
     column_view_phone.append_column(&column_phone);
-
+    //****Входящие СМС********************************************************************************
+    let factory_sms_input_phone = gtk::SignalListItemFactory::new();
+    factory_sms_input_phone.connect_setup( move |_, list_item| {
+        let label = gtk::Label::builder().build();
+        label.set_justify(Justification::Left);
+        list_item
+            .downcast_ref::<ListItem>()
+            .expect("error")
+            .set_child(Some(&label));
+    });
+    factory_sms_input_phone.connect_bind(move |_, list_item| {
+        let data = list_item
+            .downcast_ref::<ListItem>()
+            .expect("Needs to be ListItem")
+            .item()
+            .and_downcast::<sms_input_object::SmsInputObject>()
+            .expect("The item has to be an `IntegerObject`.");
+        let label = list_item
+            .downcast_ref::<ListItem>()
+            .expect("Needs to be ListItem")
+            .child()
+            .and_downcast::<gtk::Label>()
+            .expect("The child has to be a `Label`.");
+        label.set_justify(Justification::Left);
+        label.set_label(data.property::<String>("phone").as_str());
+    });
+    let column_sms_input_phone =ColumnViewColumn::new(Some("От кого"), Some(factory_sms_input_phone));
+    let factory_sms_input_time = gtk::SignalListItemFactory::new();
+    factory_sms_input_time.connect_setup(move |_, list_item| {
+        let label = gtk::Label::new(None);
+        label.set_justify(Justification::Left);
+        list_item
+            .downcast_ref::<ListItem>()
+            .expect("error")
+            .set_child(Some(&label));
+    });
+    factory_sms_input_time.connect_bind(move |_, list_item| {
+        let data = list_item
+            .downcast_ref::<ListItem>()
+            .expect("Needs to be ListItem")
+            .item()
+            .and_downcast::<sms_input_object::SmsInputObject>()
+            .expect("The item has to be an `IntegerObject`.");
+        let label = list_item
+            .downcast_ref::<ListItem>()
+            .expect("Needs to be ListItem")
+            .child()
+            .and_downcast::<gtk::Label>()
+            .expect("The child has to be a `Label`.");
+        label.set_justify(Justification::Left);
+        label.set_label(data.property::<String>("time").as_str());
+    });
+    let column_sms_input_time =ColumnViewColumn::new(Some("Когда:"), Some(factory_sms_input_time));
+    let factory_sms_input_body = gtk::SignalListItemFactory::new();
+    factory_sms_input_body.connect_setup(move |_, list_item| {
+        let label = gtk::Label::new(None);
+        label.set_justify(Justification::Left);
+        list_item
+            .downcast_ref::<ListItem>()
+            .expect("error")
+            .set_child(Some(&label));
+    });
+    factory_sms_input_body.connect_bind(move |_, list_item| {
+        let data = list_item
+            .downcast_ref::<ListItem>()
+            .expect("Needs to be ListItem")
+            .item()
+            .and_downcast::<sms_input_object::SmsInputObject>()
+            .expect("The item has to be an `IntegerObject`.");
+        let label = list_item
+            .downcast_ref::<ListItem>()
+            .expect("Needs to be ListItem")
+            .child()
+            .and_downcast::<gtk::Label>()
+            .expect("The child has to be a `Label`.");
+        label.set_justify(Justification::Left);
+        label.set_label(data.property::<String>("body").as_str());
+    });
+    let column_sms_input_body =ColumnViewColumn::new(Some("СМС:"), Some(factory_sms_input_body));
+    let model_sms_input_object: gtk::gio::ListStore = gtk::gio::ListStore::new::<sms_input_object::SmsInputObject>();
+    let no_selection_sms_input_model = gtk::NoSelection::new(Some(model_sms_input_object.clone()));
+    let selection_sms_input_model = gtk::SingleSelection::new(Some(no_selection_sms_input_model));
+    let column_view_sms_input = gtk::ColumnView::new(Some(selection_sms_input_model));
+    column_view_sms_input.append_column(&column_sms_input_time);
+    column_view_sms_input.append_column(&column_sms_input_phone);
+    column_view_sms_input.append_column(&column_sms_input_body);
+    
     let flex_box_list=gtk::Box::builder()
         .orientation(gtk::Orientation::Vertical)
         .build();
@@ -269,7 +362,6 @@ fn build_ui(app: &Application) {
         .label("Сохранить в формате CSV")
         .build();
     let csv_model_contact = model_contact_object.clone();
-
     let flex_box_contact=gtk::Box::builder()
         .orientation(Vertical).build();
     flex_box_contact.append(&button_contact_get);
@@ -285,9 +377,26 @@ fn build_ui(app: &Application) {
         .build();
     flex_box_contact.append(&scrolled_contact);
 
+
+    let button_sms_input_get=gtk::Button::builder()
+        .label("Запрос входящих СМС")
+        .build();
+
+    let flex_box_sms_input =gtk::Box::builder()
+        .orientation(Vertical).build();
+    flex_box_sms_input.append(&button_sms_input_get);
+    let scrolled_sms_input =gtk::ScrolledWindow::builder()
+        .child(&column_view_sms_input)
+        .height_request(250)
+        .propagate_natural_width(true)
+        .build();
+    flex_box_sms_input.append(&scrolled_sms_input);
+
+
     stack.add_titled(&gtk_box_g, Some("6"),"Сигнал и батарейка");
     stack.add_titled(&flex_box_list,Some("8"),"✆Входящие звонки");
     stack.add_titled(&flex_box_contact,Some("8"),"Контакты");
+    stack.add_titled(&flex_box_sms_input,Some("9"),"Входящие СМС");
     stack.add_titled(&flex_box_log,Some("7"),"✎Лог");
     let stack_switcher = gtk::StackSwitcher::builder()
         .stack(&stack)
@@ -350,6 +459,7 @@ fn build_ui(app: &Application) {
             #[weak]
             button_stop_info,
             async move {
+
                 while let Ok(enable) = receiver.recv().await{
                     edit_ip_address.set_visible(enable);
                     if !enable {
@@ -425,6 +535,31 @@ fn build_ui(app: &Application) {
         let connection = sqlite::open("data").unwrap();
         if let Err(e)=connection.execute(sql){
             println!("Ошибка {}", e);
+        }
+    });
+
+    let sender_info_sms_input = sender.clone();
+    let times_sms_input = times.clone();
+    let address_ip_sms_input = edit_ip_address.text().to_string().clone();
+    button_sms_input_get.connect_clicked(move |b|{
+        b.set_label("Запрос послан");
+        let sms_input = match SmsInput::connect(address_ip_sms_input.clone()){
+            Ok(sms_input)=> sms_input,
+            Err(error)=>{
+                times_sms_input.set_markup(format!("{}", error).as_str());
+                let sender = sender_info_sms_input.clone();
+                sender.send_blocking(true).unwrap();
+                return
+            }
+        };
+        times_sms_input.set_markup(format!("{}", sms_input.sms_input.time).as_str());
+        for sms in &sms_input.sms_input.sms{
+            let sms_input_object = sms_input_object::SmsInputObject::new();
+            sms_input_object.set_property("id", sms.id.to_value());
+            sms_input_object.set_property("phone", sms.phone.to_value());
+            sms_input_object.set_property("time", sms.time.to_value());
+            sms_input_object.set_property("body", sms.body.to_value());
+            model_sms_input_object.append(&sms_input_object);
         }
     });
 
