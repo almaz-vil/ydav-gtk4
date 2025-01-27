@@ -29,3 +29,11 @@
   #label_count_contact{
     background-color: white;
   }
+
+  #text_sms_input_body{
+    color: black;
+    background-color: yellow;
+    border: 2px solid black;
+    margin: 2px;
+    padding: 2px;
+  }

@@ -18,7 +18,7 @@ use gtk::prelude::*;
 use gtk::{Application, ApplicationWindow};
 use gtk::{ColumnViewColumn, ListItem};
 use gtk4 as gtk;
-use gtk4::Justification;
+use gtk4::{Justification, WrapMode};
 use gtk4::Orientation::Vertical;
 use std::io::{BufWriter, Read, Write};
 use std::path::Path;
@@ -27,6 +27,8 @@ use std::net::{TcpListener, TcpStream};
 use std::sync::mpsc::sync_channel;
 use std::sync::mpsc::channel;
 use std::thread::spawn;
+use gdk4::pango;
+use gdk4::pango::EllipsizeMode;
 use crate::sms_input::SmsInput;
 
 fn main() {
@@ -301,6 +303,7 @@ fn build_ui(app: &Application) {
     factory_sms_input_body.connect_setup(move |_, list_item| {
         let label = gtk::Label::new(None);
         label.set_justify(Justification::Left);
+        label.set_ellipsize(EllipsizeMode::End);
         list_item
             .downcast_ref::<ListItem>()
             .expect("error")
@@ -326,11 +329,23 @@ fn build_ui(app: &Application) {
     let model_sms_input_object: gtk::gio::ListStore = gtk::gio::ListStore::new::<sms_input_object::SmsInputObject>();
     let no_selection_sms_input_model = gtk::NoSelection::new(Some(model_sms_input_object.clone()));
     let selection_sms_input_model = gtk::SingleSelection::new(Some(no_selection_sms_input_model));
+
+    let text_sms_input_body =gtk::TextBuffer::new(None);
+    let textview_sms_input_body =gtk::TextView::with_buffer(&text_sms_input_body);
+    textview_sms_input_body.set_widget_name("text_sms_input_body");
+    textview_sms_input_body.set_buffer(Some(&text_sms_input_body));
+
+    selection_sms_input_model.connect_selection_changed(move|x, _i, _i1| {
+        let select_sms_input=x.item(x.selected())
+            .and_downcast::<sms_input_object::SmsInputObject>()
+            .expect("The item has to be an `SmsinputObject`.");
+        text_sms_input_body.set_text(select_sms_input.property::<String>("body").as_str());
+    });
     let column_view_sms_input = gtk::ColumnView::new(Some(selection_sms_input_model));
     column_view_sms_input.append_column(&column_sms_input_time);
     column_view_sms_input.append_column(&column_sms_input_phone);
     column_view_sms_input.append_column(&column_sms_input_body);
-    
+
     let flex_box_list=gtk::Box::builder()
         .orientation(gtk::Orientation::Vertical)
         .build();
@@ -391,6 +406,16 @@ fn build_ui(app: &Application) {
         .propagate_natural_width(true)
         .build();
     flex_box_sms_input.append(&scrolled_sms_input);
+    textview_sms_input_body.set_wrap_mode(WrapMode::Word);
+    textview_sms_input_body.set_editable(false);
+    let scrolled_sms_input_text_body =gtk::ScrolledWindow::builder()
+        .child(&textview_sms_input_body)
+        .height_request(75)
+        .propagate_natural_width(true)
+        .build();
+
+    flex_box_sms_input.append(&scrolled_sms_input_text_body);
+
 
 
     stack.add_titled(&gtk_box_g, Some("6"),"Сигнал и батарейка");
@@ -615,7 +640,7 @@ fn build_ui(app: &Application) {
             None=>"m".to_string()
         };
         if text=="▶" {
-            glib::timeout_add_seconds_local(2, regular_monitoring_info_clone);
+            glib::timeout_add_seconds_local(1, regular_monitoring_info_clone);
             button_stop_info.set_label("⏹");
             sender.send_blocking(false).unwrap();
         }else {
