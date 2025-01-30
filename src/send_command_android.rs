@@ -4,26 +4,30 @@ pub enum CommandSend{
     INFO,
     PHONE,
     CONTACT,
-    SMS_INPUT,
+    SmsInput,
+    DelSmsInput,
 }
 
 #[derive(Serialize)]
 struct Command{
-    command: String
+    command: String,
+    param: String
 }
 
 
 impl CommandSend {
-    pub fn str_b(self)->String{
+    pub fn str_b(self, param: &str)->String{
         let mut c = match self {
             CommandSend::INFO => {
-                Command{ command: "INFO".to_string()}.json()}
+                Command{ command: "INFO".to_string(), param: param.to_string()}.json()}
             CommandSend::PHONE => {
-                Command{ command: "PHONE".to_string()}.json()}
+                Command{ command: "PHONE".to_string(), param: param.to_string()}.json()}
             CommandSend::CONTACT => {
-                Command{ command: "CONTACT".to_string()}.json()}
-            CommandSend::SMS_INPUT => {
-                Command{ command: "SMS_INPUT".to_string()}.json()}
+                Command{ command: "CONTACT".to_string(), param: param.to_string()}.json()}
+            CommandSend::SmsInput => {
+                Command{ command: "SMS_INPUT".to_string(), param: param.to_string()}.json()}
+            CommandSend::DelSmsInput => {
+                Command{ command: "DELETE_SMS_INPUT".to_string(), param: param.to_string()}.json()}
         };
        c.push_str("\n");
         c

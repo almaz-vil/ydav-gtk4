@@ -37,3 +37,7 @@
     margin: 2px;
     padding: 2px;
   }
+
+  #log{
+    background-color: green;
+  }

@@ -26,7 +26,8 @@ pub struct Battery{
 pub struct Phones {
     pub time: String,
     pub battery: Battery,
-    pub signal: Signal
+    pub signal: Signal,
+    pub sms: usize
 }
 pub struct InfoLog{
     pub info: Phones,
@@ -36,7 +37,7 @@ pub struct InfoLog{
 impl ReadJsonAndroid for Phones{}
 impl InfoLog{
     pub fn connect(address: String)->Result<InfoLog, String>{
-        match Phones::connect(address, CommandSend::INFO){
+        match Phones::connect(address, CommandSend::INFO, ""){
             Ok((info,json))=> Ok(InfoLog{info, json }),
             Err(e)=> Err(e)
         }

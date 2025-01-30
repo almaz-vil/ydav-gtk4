@@ -26,7 +26,7 @@ pub struct SmsInputLog {
 impl ReadJsonAndroid for SmsInput{}
 impl SmsInputLog {
     pub fn connect(address: String)->Result<SmsInputLog, String>{
-        match SmsInput::connect(address, CommandSend::SMS_INPUT){
+        match SmsInput::connect(address, CommandSend::SmsInput, ""){
             Ok((sms_input,json))=>Ok(SmsInputLog {sms_input, json}),
             Err(e)=> Err(e)
         }

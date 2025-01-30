@@ -7,29 +7,26 @@ mod contact_object;
 mod send_command_android;
 mod sms_input_object;
 mod sms_input;
+mod log_object;
+mod sms_input_delete;
 
 use crate::contact::Contact;
 use crate::info::{Info, Level};
 use crate::phone::Phone;
+use crate::sms_input::SmsInput;
 use gdk4 as gdk;
-use gdk4::glib::{clone, ControlFlow};
+use gdk4::glib::{clone, ControlFlow, Object};
+use gdk4::pango::EllipsizeMode;
 use gtk::glib;
 use gtk::prelude::*;
 use gtk::{Application, ApplicationWindow};
 use gtk::{ColumnViewColumn, ListItem};
 use gtk4 as gtk;
-use gtk4::{Justification, WrapMode};
 use gtk4::Orientation::Vertical;
-use std::io::{BufWriter, Read, Write};
-use std::path::Path;
+use gtk4::{Justification, WrapMode};
 use sqlite::State;
-use std::net::{TcpListener, TcpStream};
-use std::sync::mpsc::sync_channel;
-use std::sync::mpsc::channel;
-use std::thread::spawn;
-use gdk4::pango;
-use gdk4::pango::EllipsizeMode;
-use crate::sms_input::SmsInput;
+use std::io::{BufWriter, Write};
+use std::path::Path;
 
 fn main() {
     let app = Application::builder()
@@ -119,54 +116,30 @@ fn build_ui(app: &Application) {
     //****Контакты********************************************************************************
     let factory_contact_phone = gtk::SignalListItemFactory::new();
     factory_contact_phone.connect_setup( move |_, list_item| {
-        let label = gtk::Label::builder().build();
-        label.set_justify(Justification::Left);
-        list_item
-            .downcast_ref::<ListItem>()
-            .expect("error")
-            .set_child(Some(&label));
+        add_label_is_item(list_item);
     });
     factory_contact_phone.connect_bind(move |_, list_item| {
-        let data = list_item
+        list_item
             .downcast_ref::<ListItem>()
             .expect("Needs to be ListItem")
             .item()
             .and_downcast::<contact_object::ContactObject>()
-            .expect("The item has to be an `IntegerObject`.");
-        let label = list_item
-            .downcast_ref::<ListItem>()
-            .expect("Needs to be ListItem")
-            .child()
-            .and_downcast::<gtk::Label>()
-            .expect("The child has to be a `Label`.");
-        label.set_justify(Justification::Left);
-        label.set_label(data.property::<String>("phone").as_str());
+            .expect("The item has to be an `IntegerObject`.")
+            .factorion(list_item, "phone");
     });
     let column_contact_phone =ColumnViewColumn::new(Some("Телефонные номера"), Some(factory_contact_phone));
     let factory_contact_name = gtk::SignalListItemFactory::new();
     factory_contact_name.connect_setup(move |_, list_item| {
-        let label = gtk::Label::new(None);
-        label.set_justify(Justification::Left);
-        list_item
-            .downcast_ref::<ListItem>()
-            .expect("error")
-            .set_child(Some(&label));
+        add_label_is_item(list_item);
     });
     factory_contact_name.connect_bind(move |_, list_item| {
-        let data = list_item
+        list_item
             .downcast_ref::<ListItem>()
             .expect("Needs to be ListItem")
             .item()
             .and_downcast::<contact_object::ContactObject>()
-            .expect("The item has to be an `IntegerObject`.");
-        let label = list_item
-            .downcast_ref::<ListItem>()
-            .expect("Needs to be ListItem")
-            .child()
-            .and_downcast::<gtk::Label>()
-            .expect("The child has to be a `Label`.");
-        label.set_justify(Justification::Left);
-        label.set_label(data.property::<String>("name").as_str());
+            .expect("The item has to be an `IntegerObject`.")
+            .factorion(list_item, "name");
     });
     let column_contact_name =ColumnViewColumn::new(Some("Имя"), Some(factory_contact_name));
     let model_contact_object: gtk::gio::ListStore = gtk::gio::ListStore::new::<contact_object::ContactObject>();
@@ -183,11 +156,6 @@ fn build_ui(app: &Application) {
         model_contact_object.append(&contact_object);
 
     }
-    selection_contact_model.connect_selection_changed(|x, _i, _i1| {
-        let select_contact=x.item(x.selected())
-            .and_downcast::<contact_object::ContactObject>()
-            .expect("The item has to be an `IntegerObject`.");
-    });
     let column_view_contact = gtk::ColumnView::new(Some(selection_contact_model));
     column_view_contact.append_column(&column_contact_name);
     column_view_contact.append_column(&column_contact_phone);
@@ -195,50 +163,31 @@ fn build_ui(app: &Application) {
     //*********Входящие вызовы ***********************************************
     let factory_phone = gtk::SignalListItemFactory::new();
     factory_phone.connect_setup( move |_, list_item| {
-        let label = gtk::Label::builder().build();
-        list_item
-            .downcast_ref::<ListItem>()
-            .expect("error")
-            .set_child(Some(&label));
+        add_label_is_item(list_item);
     });
     factory_phone.connect_bind(move |_, list_item| {
-        let data = list_item
+         list_item
             .downcast_ref::<ListItem>()
             .expect("Needs to be ListItem")
             .item()
             .and_downcast::<phone_object::PhoneObject>()
-            .expect("The item has to be an `IntegerObject`.");
-        let label = list_item
-            .downcast_ref::<ListItem>()
-            .expect("Needs to be ListItem")
-            .child()
-            .and_downcast::<gtk::Label>()
-            .expect("The child has to be a `Label`.");
-        label.set_label(data.property::<String>("phone").as_str());
+            .expect("The item has to be an `IntegerObject`.")
+            .factorion(list_item, "phone");
     });
     let column_phone=ColumnViewColumn::new(Some("Телефонный номер"),Some(factory_phone));
     let factory_time = gtk::SignalListItemFactory::new();
     factory_time.connect_setup(move |_, list_item| {
-        let label = gtk::Label::new(None);
-        list_item
-            .downcast_ref::<ListItem>()
-            .expect("error")
-            .set_child(Some(&label));
+        add_label_is_item(list_item);
     });
     factory_time.connect_bind(move |_, list_item| {
-        let data = list_item
+        list_item
             .downcast_ref::<ListItem>()
             .expect("Needs to be ListItem")
             .item()
             .and_downcast::<phone_object::PhoneObject>()
-            .expect("The item has to be an `IntegerObject`.");
-        let label = list_item
-            .downcast_ref::<ListItem>()
-            .expect("Needs to be ListItem")
-            .child()
-            .and_downcast::<gtk::Label>()
-            .expect("The child has to be a `Label`.");
-        label.set_label(data.property::<String>("time").as_str());
+            .expect("The item has to be an `IntegerObject`.")
+            .factorion(list_item,"time");
+
     });
     let column_time =ColumnViewColumn::new(Some("Время"), Some(factory_time));
     let model_phone_object: gtk::gio::ListStore = gtk::gio::ListStore::new::<phone_object::PhoneObject>();
@@ -249,81 +198,44 @@ fn build_ui(app: &Application) {
     //****Входящие СМС********************************************************************************
     let factory_sms_input_phone = gtk::SignalListItemFactory::new();
     factory_sms_input_phone.connect_setup( move |_, list_item| {
-        let label = gtk::Label::builder().build();
-        label.set_justify(Justification::Left);
-        list_item
-            .downcast_ref::<ListItem>()
-            .expect("error")
-            .set_child(Some(&label));
+        add_label_is_item(list_item);
     });
     factory_sms_input_phone.connect_bind(move |_, list_item| {
-        let data = list_item
+        list_item
             .downcast_ref::<ListItem>()
             .expect("Needs to be ListItem")
             .item()
             .and_downcast::<sms_input_object::SmsInputObject>()
-            .expect("The item has to be an `IntegerObject`.");
-        let label = list_item
-            .downcast_ref::<ListItem>()
-            .expect("Needs to be ListItem")
-            .child()
-            .and_downcast::<gtk::Label>()
-            .expect("The child has to be a `Label`.");
-        label.set_justify(Justification::Left);
-        label.set_label(data.property::<String>("phone").as_str());
+            .expect("The item has to be an `IntegerObject`.")
+            .factorion(list_item, "phone");
     });
     let column_sms_input_phone =ColumnViewColumn::new(Some("От кого"), Some(factory_sms_input_phone));
     let factory_sms_input_time = gtk::SignalListItemFactory::new();
     factory_sms_input_time.connect_setup(move |_, list_item| {
-        let label = gtk::Label::new(None);
-        label.set_justify(Justification::Left);
-        list_item
-            .downcast_ref::<ListItem>()
-            .expect("error")
-            .set_child(Some(&label));
+        add_label_is_item(list_item);
     });
     factory_sms_input_time.connect_bind(move |_, list_item| {
-        let data = list_item
+         list_item
             .downcast_ref::<ListItem>()
             .expect("Needs to be ListItem")
             .item()
             .and_downcast::<sms_input_object::SmsInputObject>()
-            .expect("The item has to be an `IntegerObject`.");
-        let label = list_item
-            .downcast_ref::<ListItem>()
-            .expect("Needs to be ListItem")
-            .child()
-            .and_downcast::<gtk::Label>()
-            .expect("The child has to be a `Label`.");
-        label.set_justify(Justification::Left);
-        label.set_label(data.property::<String>("time").as_str());
+            .expect("The item has to be an `IntegerObject`.")
+            .factorion(list_item, "time");
     });
     let column_sms_input_time =ColumnViewColumn::new(Some("Когда:"), Some(factory_sms_input_time));
     let factory_sms_input_body = gtk::SignalListItemFactory::new();
     factory_sms_input_body.connect_setup(move |_, list_item| {
-        let label = gtk::Label::new(None);
-        label.set_justify(Justification::Left);
-        label.set_ellipsize(EllipsizeMode::End);
-        list_item
-            .downcast_ref::<ListItem>()
-            .expect("error")
-            .set_child(Some(&label));
+        add_label_is_item(list_item);
     });
     factory_sms_input_body.connect_bind(move |_, list_item| {
-        let data = list_item
+        list_item
             .downcast_ref::<ListItem>()
             .expect("Needs to be ListItem")
             .item()
             .and_downcast::<sms_input_object::SmsInputObject>()
-            .expect("The item has to be an `IntegerObject`.");
-        let label = list_item
-            .downcast_ref::<ListItem>()
-            .expect("Needs to be ListItem")
-            .child()
-            .and_downcast::<gtk::Label>()
-            .expect("The child has to be a `Label`.");
-        label.set_justify(Justification::Left);
-        label.set_label(data.property::<String>("body").as_str());
+            .expect("The item has to be an `IntegerObject`.")
+            .factorion(list_item,"body");
     });
     let column_sms_input_body =ColumnViewColumn::new(Some("СМС:"), Some(factory_sms_input_body));
     let model_sms_input_object: gtk::gio::ListStore = gtk::gio::ListStore::new::<sms_input_object::SmsInputObject>();
@@ -360,14 +272,49 @@ fn build_ui(app: &Application) {
         .build();
     flex_box_list.append(&scrolled_list);
 
+    let factory_log = gtk::SignalListItemFactory::new();
+    factory_log.connect_setup(move |_, list_item| {
+        add_label_is_item(list_item);
+    });
+    factory_log.connect_bind(move |_, list_item| {
+        list_item
+            .downcast_ref::<ListItem>()
+            .expect("Needs to be ListItem")
+            .item()
+            .and_downcast::<log_object::LogObject>()
+            .expect("The item has to be an `IntegerObject`.")
+            .factorion(list_item,"log");
+    });
+    let column_log =ColumnViewColumn::new(Some("Лог:"), Some(factory_log));
+    let model_log: gtk::gio::ListStore = gtk::gio::ListStore::new::<log_object::LogObject>();
+    let no_selection_log = gtk::NoSelection::new(Some(model_log.clone()));
+    let selection_log = gtk::SingleSelection::new(Some(no_selection_log));
 
-    let listbox_log = gtk::ListBox::new();
-    let flex_box_log=gtk::Box::default();
+    let text_log =gtk::TextBuffer::new(None);
+    let textview_log =gtk::TextView::with_buffer(&text_log);
+    textview_log.set_widget_name("text_log");
+    textview_log.set_buffer(Some(&text_log));
+
+    selection_log.connect_selection_changed(move|x, _i, _i1| {
+        let select_sms_input=x.item(x.selected())
+            .and_downcast::<log_object::LogObject>()
+            .expect("The item has to be an `LogObject`.");
+        text_log.set_text(select_sms_input.property::<String>("log").as_str());
+    });
+    let column_view_log = gtk::ColumnView::new(Some(selection_log));
+    column_view_log.append_column(&column_log);
+
+
+    let flex_box_log=gtk::Box::builder()
+        .orientation(Vertical).build();
+    flex_box_log.set_widget_name("log");
     let scrolled_log=gtk::ScrolledWindow::builder()
-        .child(&listbox_log)
+        .child(&column_view_log)
         .height_request(250)
         .propagate_natural_width(true)
         .build();
+    let check_log = gtk::CheckButton::with_label("Вести запись в лог");
+    flex_box_log.append(&check_log);
     flex_box_log.append(&scrolled_log);
 
     let button_contact_get=gtk::Button::builder()
@@ -588,6 +535,7 @@ fn build_ui(app: &Application) {
         }
     });
 
+    let check_log_monotoring = check_log.clone();
     let sender_info= sender.clone();
     let address = edit_ip_address.text().to_string().clone();
     let times_log= times.clone();
@@ -617,10 +565,21 @@ fn build_ui(app: &Application) {
         label_rsrq.set_markup(format!("RSRQ: {} dB", log.info.signal.rsrq).as_str());
         label_rsrp.set_markup(format!("RSRP: {} dBm", log.info.signal.rsrp).as_str());
         label_rssi.set_markup(format!("RSSI: {}", log.info.signal.rssi).as_str());
-        times_log.set_markup(format!("🕰{}", log.info.time).as_str());
-        //
-        let label_log=gtk::Label::new(Some(format!("Лог:{}", log.json).as_str()));
-        listbox_log.append(&label_log);
+        times_log.set_markup(format!("🕰{} СМС:{}", log.info.time, log.info.sms).as_str());
+        if check_log_monotoring.is_active() {
+            let log_object = log_object::LogObject::new();
+            log_object.set_property("log", format!("Лог:{}", log.json).as_str());
+            model_log.append(&log_object)
+        }
+        // TODO Есть новые СМС! Реакция?
+        if log.info.sms>0{
+            let param_where_sql="";
+            let sms_input_delete = sms_input_delete::SmsInputDelete::connect(address.clone(),param_where_sql);
+            if let Ok(sid)=sms_input_delete{
+                times_log.set_markup(format!("🕰{} СМС:{}", sid.sms.time, log.info.sms).as_str());
+            }
+        }
+
         let flag_regular_monitoring_info =edit_ip_address.get_visible();
         if flag_regular_monitoring_info ==false{ return ControlFlow::Continue
         };
@@ -640,7 +599,7 @@ fn build_ui(app: &Application) {
             None=>"m".to_string()
         };
         if text=="▶" {
-            glib::timeout_add_seconds_local(1, regular_monitoring_info_clone);
+            glib::timeout_add_seconds_local(10, regular_monitoring_info_clone);
             button_stop_info.set_label("⏹");
             sender.send_blocking(false).unwrap();
         }else {
@@ -655,4 +614,14 @@ fn load_css() {
     let priority = gtk::STYLE_PROVIDER_PRIORITY_APPLICATION;
     provider.load_from_path(Path::new("main.css"));
     gtk::style_context_add_provider_for_display(&display, &provider, priority);
+}
+
+fn add_label_is_item(list_item: &Object){
+    let label = gtk::Label::builder().build();
+    label.set_justify(Justification::Left);
+    label.set_ellipsize(EllipsizeMode::End);
+    list_item
+        .downcast_ref::<ListItem>()
+        .expect("error")
+        .set_child(Some(&label));
 }

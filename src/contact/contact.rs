@@ -24,7 +24,7 @@ pub struct ContactLog {
 impl ReadJsonAndroid for Contacts {}
 impl ContactLog {
     pub  fn connect(address: String)->Result<ContactLog, String>{
-        match Contacts::connect(address, CommandSend::CONTACT){
+        match Contacts::connect(address, CommandSend::CONTACT, ""){
             Ok((contacts,json))=> Ok(ContactLog { contacts, json}),
             Err(e)=> Err(e)
         }

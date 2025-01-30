@@ -25,7 +25,7 @@ pub struct PhoneLog{
 impl ReadJsonAndroid for Phones {}
 impl PhoneLog{
     pub  fn connect(address: String)->Result<PhoneLog, String>{
-        match Phones::connect(address, CommandSend::PHONE){
+        match Phones::connect(address, CommandSend::PHONE, ""){
             Ok((phones,json))=> Ok(PhoneLog{phones, json}),
             Err(e)=> Err(e)
         }
