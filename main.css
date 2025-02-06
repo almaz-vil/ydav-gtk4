@@ -41,3 +41,11 @@
   #log{
     background-color: green;
   }
+
+#new_sms_input{
+  border: 2px solid red;
+  color: red;
+  font-weight: bold;
+  font-size: xxx-large;
+  background-color: darkblue;
+}

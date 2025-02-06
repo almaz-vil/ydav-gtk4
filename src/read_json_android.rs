@@ -1,12 +1,16 @@
 use std::io::{BufRead, BufReader, Write};
-use std::net::TcpStream;
+use std::net::{TcpStream, ToSocketAddrs};
+use std::time::Duration;
 use serde::Deserialize;
 use serde_json::from_str;
 use crate::send_command_android::CommandSend;
 
 pub trait ReadJsonAndroid{
       fn connect<T: Default+ReadJsonAndroid+for<'a>Deserialize<'a>>(address: String, com: CommandSend, param: &str)->Result<(T, String), String>{
-        match TcpStream::connect(address) {
+          let duration = Duration::new(3,0);
+          let mut socket_addr =address.to_socket_addrs().expect("Ошибка формата адреса");
+          let addr = socket_addr.next().expect("Ошибка формата адреса");
+          match TcpStream::connect_timeout(&addr, duration) {
             Ok(mut stream) => {
                 stream.write(com.str_b(param).as_bytes()).unwrap();
                 //stream.write(b"INFO\n").unwrap();

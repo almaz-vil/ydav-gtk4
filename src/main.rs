@@ -105,6 +105,12 @@ fn build_ui(app: &Application) {
     status.set_widget_name("statusbar");
     status.append(&times);
     status.append(&button_stop_info);
+    let label_met_new_sms_input = gtk::Label::new(Some("📩\nНовое СМС"));
+    label_met_new_sms_input.set_widget_name("new_sms_input");
+    label_met_new_sms_input.set_justify(Justification::Center);
+    label_met_new_sms_input.set_visible(false);
+    gtk_box_g.append(&label_met_new_sms_input);
+
     gtk_box_g.append(&gtk_box_horizontal);
     gtk_box_g.append(&gtk_box_horizontal2);
     gtk_box_g.append(&edit_ip_address);
@@ -242,6 +248,7 @@ fn build_ui(app: &Application) {
     let no_selection_sms_input_model = gtk::NoSelection::new(Some(model_sms_input_object.clone()));
     let selection_sms_input_model = gtk::SingleSelection::new(Some(no_selection_sms_input_model));
 
+
     let text_sms_input_body =gtk::TextBuffer::new(None);
     let textview_sms_input_body =gtk::TextView::with_buffer(&text_sms_input_body);
     textview_sms_input_body.set_widget_name("text_sms_input_body");
@@ -259,7 +266,7 @@ fn build_ui(app: &Application) {
     column_view_sms_input.append_column(&column_sms_input_body);
 
     let flex_box_list=gtk::Box::builder()
-        .orientation(gtk::Orientation::Vertical)
+        .orientation(Vertical)
         .build();
     let button_list_get=gtk::Button::builder()
         .label("Запрос звонков")
@@ -374,7 +381,7 @@ fn build_ui(app: &Application) {
         .stack(&stack)
         .build();
     let gtk_box_stack=gtk::Box::builder()
-        .orientation(gtk::Orientation::Vertical)
+        .orientation(Vertical)
         .build();
     gtk_box_stack.append(&stack_switcher);
     gtk_box_stack.append(&stack);
@@ -389,6 +396,18 @@ fn build_ui(app: &Application) {
     load_css();
     // Show the window.
     window.present();
+
+    let connection = sqlite::open("data").unwrap();
+    let query = "SELECT id_na_android, phone, time, body FROM sms_input ORDER BY _id DESC ";
+    let mut statement = connection.prepare(query).unwrap();
+    while let Ok(State::Row) = statement.next() {
+        let sms_input_object = sms_input_object::SmsInputObject::new();
+        sms_input_object.set_property("id", statement.read::<String,_>("id_na_android").unwrap().as_str());
+        sms_input_object.set_property("phone", statement.read::<String,_>("phone").unwrap().as_str());
+        sms_input_object.set_property("time", statement.read::<String,_>("time").unwrap().as_str());
+        sms_input_object.set_property("body", statement.read::<String,_>("body").unwrap().as_str());
+        model_sms_input_object.append(&sms_input_object);
+    }
     button_contact_csv.connect_clicked(move |_x1| {
         let file_filter = gtk::FileFilter::new();
         file_filter.add_pattern("*.csv");
@@ -477,8 +496,8 @@ fn build_ui(app: &Application) {
     let sender_info_contact = sender.clone();
     let times_contact = times.clone();
     let address_ip = edit_ip_address.text().to_string().clone();
+    let label_met = label_met_new_sms_input.clone();
     button_contact_get.connect_clicked(move |b|{
-        b.set_label("Запрос послан");
         let contact = match Contact::connect(address_ip.clone()){
             Ok(contact)=> contact,
             Err(error)=>{
@@ -489,7 +508,6 @@ fn build_ui(app: &Application) {
             }
         };
         times_contact.set_markup(format!("{}", contact.contacts.time).as_str());
-        //model_contact_object.remove_all();
         let mut sql =" DELETE FROM contact;
         UPDATE sqlite_sequence SET seq=0 WHERE name='contact'; BEGIN TRANSACTION;".to_string();
         for contact in &contact.contacts.contact{
@@ -504,10 +522,7 @@ fn build_ui(app: &Application) {
         }
         sql=sql+"COMMIT;";
         label_count_contact.set_markup(format!(" У Вас контактов <b>{}</b>.", &contact.contacts.contact.len()).as_str());
-        let connection = sqlite::open("data").unwrap();
-        if let Err(e)=connection.execute(sql){
-            println!("Ошибка {}", e);
-        }
+        sql_execute(sql);
     });
 
     let sender_info_sms_input = sender.clone();
@@ -524,7 +539,9 @@ fn build_ui(app: &Application) {
                 return
             }
         };
+
         times_sms_input.set_markup(format!("{}", sms_input.sms_input.time).as_str());
+        let mut sql ="BEGIN TRANSACTION;".to_string();
         for sms in &sms_input.sms_input.sms{
             let sms_input_object = sms_input_object::SmsInputObject::new();
             sms_input_object.set_property("id", sms.id.to_value());
@@ -532,13 +549,40 @@ fn build_ui(app: &Application) {
             sms_input_object.set_property("time", sms.time.to_value());
             sms_input_object.set_property("body", sms.body.to_value());
             model_sms_input_object.append(&sms_input_object);
+            sql=sql+format!("INSERT INTO sms_input (id_na_android, phone, time, body) VALUES (\"{}\", \"{}\", \"{}\", \"{}\");", sms.id, sms.phone, sms.time, sms.body).as_str();
         }
+        sql=sql+"COMMIT;";
+        sql_execute(sql);
+        let mut param_where_sql=String::new();
+        let mut where_sql=String::new();
+        let query = "SELECT _id, id_na_android FROM sms_input WHERE id_na_android>0";
+        let connection = sqlite::open("data").unwrap();
+        let mut statement = connection.prepare(query).unwrap();
+        while let Ok(State::Row) = statement.next() {
+            if !param_where_sql.is_empty(){
+                param_where_sql.push_str(" OR ");
+                where_sql.push_str(" OR ");
+            }
+            let sms_input_id=statement.read::<String,_>("id_na_android").unwrap();
+            param_where_sql.push_str(format!("_id={}", sms_input_id).as_str());
+            let id=statement.read::<String,_>("_id").unwrap();
+            where_sql.push_str(format!("_id={}", id).as_str());
+        }
+        let sms_input_delete = sms_input_delete::SmsInputDelete::connect(address_ip_sms_input.clone(),&param_where_sql);
+        if let Ok(sid)=sms_input_delete{
+            let sql = format!("UPDATE sms_input SET id_na_android=0 WHERE {}", where_sql);
+            sql_execute(sql);
+            label_met.set_visible(false);
+        }
+
+
     });
 
     let check_log_monotoring = check_log.clone();
     let sender_info= sender.clone();
     let address = edit_ip_address.text().to_string().clone();
     let times_log= times.clone();
+    let  label_met = label_met_new_sms_input.clone();
     let regular_monitoring_info= move ||{
         let log= match Info::connect(address.clone()) {
             Ok(info)=>{
@@ -573,11 +617,8 @@ fn build_ui(app: &Application) {
         }
         // TODO Есть новые СМС! Реакция?
         if log.info.sms>0{
-            let param_where_sql="";
-            let sms_input_delete = sms_input_delete::SmsInputDelete::connect(address.clone(),param_where_sql);
-            if let Ok(sid)=sms_input_delete{
-                times_log.set_markup(format!("🕰{} СМС:{}", sid.sms.time, log.info.sms).as_str());
-            }
+            label_met.set_visible(true);
+            times_log.set_markup(format!("🕰{} СМС:{}", log.info.time, log.info.sms).as_str());
         }
 
         let flag_regular_monitoring_info =edit_ip_address.get_visible();
@@ -599,7 +640,7 @@ fn build_ui(app: &Application) {
             None=>"m".to_string()
         };
         if text=="▶" {
-            glib::timeout_add_seconds_local(10, regular_monitoring_info_clone);
+            glib::timeout_add_seconds_local(1, regular_monitoring_info_clone);
             button_stop_info.set_label("⏹");
             sender.send_blocking(false).unwrap();
         }else {
@@ -624,4 +665,11 @@ fn add_label_is_item(list_item: &Object){
         .downcast_ref::<ListItem>()
         .expect("error")
         .set_child(Some(&label));
+}
+
+fn sql_execute(sql: String){
+    let connection = sqlite::open("data").unwrap();
+    if let Err(e)=connection.execute(&sql){
+        println!("Ошибка {} тут {}", e, sql);
+    }
 }
