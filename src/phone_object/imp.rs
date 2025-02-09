@@ -5,6 +5,7 @@ use glib::subclass::prelude::*;
 
 #[derive(Default)]
 pub struct PhoneObject {
+    id: RefCell<Option<String>>,
     time: RefCell<Option<String>>,
     phone: RefCell<Option<String>>,
 }
@@ -23,6 +24,8 @@ impl ObjectImpl for PhoneObject {
         static PROPERTIES: OnceLock<Vec<glib::ParamSpec>> = OnceLock::new();
         PROPERTIES.get_or_init(|| {
             vec![
+                glib::ParamSpecString::builder("id")
+                    .build(),
                 glib::ParamSpecString::builder("time")
                     .build(),
                 glib::ParamSpecString::builder("phone")
@@ -33,6 +36,12 @@ impl ObjectImpl for PhoneObject {
 
     fn set_property(&self, _id: usize, value: &glib::Value, pspec: &glib::ParamSpec) {
         match pspec.name() {
+            "id" => {
+                let id = value
+                    .get()
+                    .expect("type conformity checked by `Object::set_property`");
+                self.id.replace(id);
+            },
             "time" => {
                 let time = value
                     .get()
@@ -51,6 +60,7 @@ impl ObjectImpl for PhoneObject {
 
     fn property(&self, _id: usize, pspec: &glib::ParamSpec) -> glib::Value {
         match pspec.name() {
+            "id" => self.time.borrow().to_value(),
             "time" => self.time.borrow().to_value(),
             "phone" => self.phone.borrow().to_value(),
             _ => unimplemented!(),

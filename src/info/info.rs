@@ -18,7 +18,8 @@ pub struct Signal{
 pub struct Battery{
     pub temperature: f64,
     pub level: f64,
-    pub status: String
+    pub status: String,
+    pub charge: String
 }
 
 #[derive(Serialize, Deserialize, Default)]
@@ -27,7 +28,8 @@ pub struct Phones {
     pub time: String,
     pub battery: Battery,
     pub signal: Signal,
-    pub sms: usize
+    pub sms: usize,
+    pub phone: usize
 }
 pub struct InfoLog{
     pub info: Phones,

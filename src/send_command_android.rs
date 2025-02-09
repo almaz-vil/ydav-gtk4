@@ -6,6 +6,7 @@ pub enum CommandSend{
     CONTACT,
     SmsInput,
     DelSmsInput,
+    DelPhone,
 }
 
 #[derive(Serialize)]
@@ -28,6 +29,8 @@ impl CommandSend {
                 Command{ command: "SMS_INPUT".to_string(), param: param.to_string()}.json()}
             CommandSend::DelSmsInput => {
                 Command{ command: "DELETE_SMS_INPUT".to_string(), param: param.to_string()}.json()}
+            CommandSend::DelPhone => {
+                Command{ command: "DELETE_PHONE".to_string(), param: param.to_string()}.json()}
         };
        c.push_str("\n");
         c

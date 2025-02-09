@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Default)]
 //Информация о вызовах
 pub struct Phone{
+    pub id: String,
     pub time: String,
     pub phone: String,
     pub status: String
