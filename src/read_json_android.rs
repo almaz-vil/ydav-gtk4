@@ -13,7 +13,6 @@ pub trait ReadJsonAndroid{
           match TcpStream::connect_timeout(&addr, duration) {
             Ok(mut stream) => {
                 stream.write(com.str_b(param).as_bytes()).unwrap();
-                //stream.write(b"INFO\n").unwrap();
                 let reader = BufReader::new(stream.try_clone().expect("error"));
                 let str_json= match T::read_json(reader){
                     Ok(d)=>d,

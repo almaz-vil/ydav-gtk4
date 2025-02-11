@@ -34,11 +34,36 @@
     color: black;
     background-color: yellow;
     border: 2px solid black;
-    margin: 2px;
     padding: 2px;
+    padding-left: 6px;
   }
 
-  #log{
+.button_sms_input_body{
+  background-image: none;
+  background-color: yellow;
+  color: black;
+  border: 4px solid black;
+  margin: 1px;
+  padding: 2px;
+}
+.button_sms_input_body:hover{
+  background-image: none;
+  background-color: yellow;
+  color: black;
+  border: 4px solid black;
+  margin: 1px;
+  padding: 2px;
+}
+#button_sms_input_body{
+  background-image: none;
+  background-color: beige;
+  color: black;
+  border: 2px solid black;
+  margin: 2px;
+  padding: 2px;
+}
+
+#log{
     background-color: green;
   }
 

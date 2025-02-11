@@ -1,3 +1,4 @@
+extern crate regex;
 mod info;
 mod phone;
 mod phone_object;
@@ -24,10 +25,11 @@ use gtk::{Application, ApplicationWindow};
 use gtk::{ColumnViewColumn, ListItem};
 use gtk4 as gtk;
 use gtk4::Orientation::Vertical;
-use gtk4::{Justification, WrapMode};
+use gtk4::{Justification, Orientation, Widget, WrapMode};
 use sqlite::{Connection, State};
 use std::io::{BufWriter, Write};
 use std::path::Path;
+use regex::Regex;
 
 fn main() {
     let app = Application::builder()
@@ -263,12 +265,53 @@ fn build_ui(app: &Application) {
     let textview_sms_input_body =gtk::TextView::with_buffer(&text_sms_input_body);
     textview_sms_input_body.set_widget_name("text_sms_input_body");
     textview_sms_input_body.set_buffer(Some(&text_sms_input_body));
-
+    let dop_panel_for_button_body_input_smst = gtk::Box::builder()
+        .orientation(Orientation::Horizontal)
+        .build();
+    let dop_panel_for_button_body_input_sms = dop_panel_for_button_body_input_smst.clone();
+    // Буфер обмена ОС
+    let display = gdk::Display::default().unwrap();
+    let clipboard = display.clipboard();
+    //Строка для поиска ссылок и цифр в тексте СМС
+    let semver_sms_input = regex::Regex::new(r"(\d+)|([-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*))").expect("Ошибка парсера входящих СМС");
     selection_sms_input_model.connect_selection_changed(move|x, _i, _i1| {
         let select_sms_input=x.item(x.selected())
             .and_downcast::<sms_input_object::SmsInputObject>()
             .expect("The item has to be an `SmsinputObject`.");
-        text_sms_input_body.set_text(select_sms_input.property::<String>("body").as_str());
+        let body = select_sms_input.property::<String>("body");
+        let mut last = dop_panel_for_button_body_input_sms.last_child();
+        while let Some(v)  = last {
+            dop_panel_for_button_body_input_sms.remove(&v);
+            last = dop_panel_for_button_body_input_sms.last_child();
+        }
+        text_sms_input_body.set_text(body.as_str());
+        let mut button_one = None;
+        semver_sms_input.find_iter(body.as_str()).filter(|u| u.len()>2)
+        .for_each(|item|{
+            let button =gtk::Button::builder().label(format!("📋 {}", item.as_str())).build();
+            button.set_tooltip_text(Some("Для копирования нажмите!!"));
+            if button_one==None{
+                button_one=Some(button.clone());
+            };
+            button.set_css_classes(&["button_sms_input_body"]);
+            let clipboardt=clipboard.clone();
+            let panel = button_one.clone();
+            button.connect_clicked(move|b|{
+                clipboardt.set_text(b.label().unwrap().as_str());
+                if let Some(u) = &panel{
+                    u.set_widget_name("");
+                    u.set_css_classes(&["button_sms_input_body"]);
+                    let mut last = u.next_sibling();
+                    while let Some(v)  = last {
+                        v.set_widget_name("");
+                        v.set_css_classes(&["button_sms_input_body"]);
+                        last =  v.next_sibling();
+                    }
+                }
+                b.set_widget_name("button_sms_input_body");
+            });
+            dop_panel_for_button_body_input_sms.append(&button);
+        }) ;
     });
     let column_view_sms_input = gtk::ColumnView::new(Some(selection_sms_input_model));
     column_view_sms_input.append_column(&column_sms_input_time);
@@ -380,7 +423,7 @@ fn build_ui(app: &Application) {
         .build();
 
     flex_box_sms_input.append(&scrolled_sms_input_text_body);
-
+    flex_box_sms_input.append(&dop_panel_for_button_body_input_smst);
 
 
     stack.add_titled(&gtk_box_g, Some("Signal"),"Сигнал и батарейка");
