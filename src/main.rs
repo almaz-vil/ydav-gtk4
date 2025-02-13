@@ -24,12 +24,11 @@ use gtk::prelude::*;
 use gtk::{Application, ApplicationWindow};
 use gtk::{ColumnViewColumn, ListItem};
 use gtk4 as gtk;
-use gtk4::Orientation::Vertical;
-use gtk4::{Justification, Orientation, Widget, WrapMode};
+use gtk4::Orientation::{Horizontal, Vertical};
+use gtk4::{Justification, Orientation, StringObject, Widget, WrapMode};
 use sqlite::{Connection, State};
 use std::io::{BufWriter, Write};
 use std::path::Path;
-use regex::Regex;
 
 fn main() {
     let app = Application::builder()
@@ -168,11 +167,12 @@ fn build_ui(app: &Application) {
     let query = "SELECT name, phone FROM contact";
     let mut statement = connection.prepare(query).unwrap();
     while let Ok(State::Row) = statement.next() {
+        let name = statement.read::<String,_>("name").unwrap();
+        let phone = statement.read::<String,_>("phone").unwrap();
         let contact_object = contact_object::ContactObject::new();
-        contact_object.set_property("name", statement.read::<String,_>("name").unwrap().as_str());
-        contact_object.set_property("phone", statement.read::<String,_>("phone").unwrap().as_str());
+        contact_object.set_property("name", name.as_str());
+        contact_object.set_property("phone", phone.as_str());
         model_contact_object.append(&contact_object);
-
     }
     let column_view_contact = gtk::ColumnView::new(Some(selection_contact_model));
     column_view_contact.append_column(&column_contact_name);
@@ -421,15 +421,51 @@ fn build_ui(app: &Application) {
         .height_request(75)
         .propagate_natural_width(true)
         .build();
-
     flex_box_sms_input.append(&scrolled_sms_input_text_body);
     flex_box_sms_input.append(&dop_panel_for_button_body_input_smst);
 
-
+    let flex_box_sms_output = gtk::Box::builder()
+        .orientation(Vertical).build();
+    let flex_box_sms_output_boxh =gtk::Box::builder()
+        .orientation(Horizontal).build();
+    let label = gtk::Label::new(Some("Выбор номера телефона"));
+    let edit_sms_output_phone = gtk::Entry::new();
+    let exp = gtk::PropertyExpression::new(
+        contact_object::ContactObject::static_type(),
+        None::<gtk::Expression>,
+        "name",
+    );
+    let combo_box_phone = gtk::DropDown::new(Some(model_contact_object.clone()), Some(exp));
+    let edit_phone = edit_sms_output_phone.clone();
+    combo_box_phone.connect_selected_notify(move |dd|{
+       let binding = dd.selected_item().unwrap();
+       let sel = binding.downcast_ref::<contact_object::ContactObject>().unwrap();
+       edit_phone.set_text(sel.property::<String>("phone").as_str());
+   });
+    flex_box_sms_output_boxh.append(&label);
+    flex_box_sms_output_boxh.append(&edit_sms_output_phone);
+    flex_box_sms_output_boxh.append(&combo_box_phone);
+    flex_box_sms_output.append(&flex_box_sms_output_boxh);
+    let label = gtk::Label::new(Some("СМС (текст)"));
+    let edit_sms_output_text = gtk::TextView::builder()
+        .height_request(100).build();
+    let buffer_sms_output_text = gtk::TextBuffer::new(None);
+    edit_sms_output_text.set_buffer(Some(&buffer_sms_output_text));
+    let scrolled_sms_output_text =gtk::ScrolledWindow::builder()
+        .child(&edit_sms_output_text)
+        .height_request(100)
+        .propagate_natural_width(true)
+        .build();
+    let button_sms_output_send = gtk::Button::builder()
+        .label("Отправить").build();
+    flex_box_sms_output.append(&label);
+    flex_box_sms_output.append(&scrolled_sms_output_text);
+    flex_box_sms_output.append(&button_sms_output_send);
     stack.add_titled(&gtk_box_g, Some("Signal"),"Сигнал и батарейка");
     stack.add_titled(&flex_box_list,Some("Phone"),"✆Входящие звонки");
     stack.add_titled(&flex_box_contact,Some("Contact"),"Контакты");
     stack.add_titled(&flex_box_sms_input,Some("InputSMS"),"Входящие СМС");
+    stack.add_titled(&flex_box_sms_output,Some("OutputSMS"),"СМС");
     stack.add_titled(&flex_box_log,Some("Logs"),"✎Лог");
     let stack_switcher = gtk::StackSwitcher::builder()
         .stack(&stack)
@@ -471,6 +507,13 @@ fn build_ui(app: &Application) {
         phone_input_object.set_property("time", statement.read::<String,_>("time").unwrap().as_str());
         model_phone_object.append(&phone_input_object);
     }
+
+    button_sms_output_send.connect_clicked(move |x1| {
+        let phone = edit_sms_output_phone.text().to_string();
+        let text = buffer_sms_output_text.text(&buffer_sms_output_text.start_iter(), &buffer_sms_output_text.end_iter(), false).to_string();
+        println!("{} /n {}", phone, text);
+    });
+
     button_contact_csv.connect_clicked(move |_x1| {
         let file_filter = gtk::FileFilter::new();
         file_filter.add_pattern("*.csv");
