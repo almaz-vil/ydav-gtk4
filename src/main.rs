@@ -11,6 +11,7 @@ mod sms_input;
 mod log_object;
 mod sms_input_delete;
 mod phone_delete;
+mod sms_output_object;
 
 use crate::contact::Contact;
 use crate::info::{Info, Level};
@@ -25,7 +26,7 @@ use gtk::{Application, ApplicationWindow};
 use gtk::{ColumnViewColumn, ListItem};
 use gtk4 as gtk;
 use gtk4::Orientation::{Horizontal, Vertical};
-use gtk4::{Justification, Orientation, StringObject, Widget, WrapMode};
+use gtk4::{Justification, Orientation, WrapMode};
 use sqlite::{Connection, State};
 use std::io::{BufWriter, Write};
 use std::path::Path;
@@ -43,7 +44,7 @@ fn main() {
 fn build_ui(app: &Application) {
     let class_info=["info"];
     let gtk_box_horizontal =gtk::Box::builder()
-            .orientation(gtk::Orientation::Horizontal)
+            .orientation(Horizontal)
             .halign(gtk::Align::Fill)
             .build();
     let label_battery_level = gtk::Label::new(Some("_"));
@@ -75,7 +76,7 @@ fn build_ui(app: &Application) {
     gtk_box_horizontal.append(&label_battery_temperature);
     gtk_box_horizontal.append(&label_battery_status);
     let gtk_box_horizontal2 =gtk::Box::builder()
-        .orientation(gtk::Orientation::Horizontal)
+        .orientation(Horizontal)
         .halign(gtk::Align::Fill)
         .build();
     gtk_box_horizontal.set_css_classes(&["panel"]);
@@ -106,7 +107,7 @@ fn build_ui(app: &Application) {
     let button_stop_info = gtk::Button::new();
     button_stop_info.set_label("▶");
     let status = gtk::Box::builder()
-        .orientation(gtk::Orientation::Horizontal)
+        .orientation(Horizontal)
         .build();
     status.set_widget_name("statusbar");
     status.append(&times);
@@ -259,14 +260,80 @@ fn build_ui(app: &Application) {
     let model_sms_input_object: gtk::gio::ListStore = gtk::gio::ListStore::new::<sms_input_object::SmsInputObject>();
     let no_selection_sms_input_model = gtk::NoSelection::new(Some(model_sms_input_object.clone()));
     let selection_sms_input_model = gtk::SingleSelection::new(Some(no_selection_sms_input_model));
+    //**************Исходящие СМС***********************************************************
+    let factory_sms_output_phone = gtk::SignalListItemFactory::new();
+    factory_sms_output_phone.connect_setup( move |_, list_item| {
+        add_label_is_item(list_item);
+    });
+    factory_sms_output_phone.connect_bind(move |_, list_item| {
+        list_item
+            .downcast_ref::<ListItem>()
+            .expect("Needs to be ListItem")
+            .item()
+            .and_downcast::<sms_output_object::SmsOutputObject>()
+            .expect("The item has to be an `IntegerObject`.")
+            .factorion(list_item, "phone");
+    });
+    let column_sms_output_phone =ColumnViewColumn::new(Some("Номер"), Some(factory_sms_output_phone));
+    let factory_sms_output_text = gtk::SignalListItemFactory::new();
+    factory_sms_output_text.connect_setup( move |_, list_item| {
+        add_label_is_item(list_item);
+    });
+    factory_sms_output_text.connect_bind(move |_, list_item| {
+        list_item
+            .downcast_ref::<ListItem>()
+            .expect("Needs to be ListItem")
+            .item()
+            .and_downcast::<sms_output_object::SmsOutputObject>()
+            .expect("The item has to be an `IntegerObject`.")
+            .factorion(list_item, "text");
+    });
+    let column_sms_output_text =ColumnViewColumn::new(Some("Текст СМС"), Some(factory_sms_output_text));
+    let factory_sms_output_sent = gtk::SignalListItemFactory::new();
+    factory_sms_output_sent.connect_setup( move |_, list_item| {
+        add_panel_is_item(list_item);
+    });
+    factory_sms_output_sent.connect_bind(move |_, list_item| {
+        list_item
+            .downcast_ref::<ListItem>()
+            .expect("Needs to be ListItem")
+            .item()
+            .and_downcast::<sms_output_object::SmsOutputObject>()
+            .expect("The item has to be an `IntegerObject`.")
+            .factorion_dy_panel(list_item, "sent", "senttime");
 
+    });
+    let column_sms_output_sent =ColumnViewColumn::new(Some("Статус отправки"), Some(factory_sms_output_sent));
+    let factory_sms_output_delivery = gtk::SignalListItemFactory::new();
+    factory_sms_output_delivery.connect_setup( move |_, list_item| {
+        add_panel_is_item(list_item);
+    });
+    factory_sms_output_delivery.connect_bind(move |_, list_item| {
+        list_item
+            .downcast_ref::<ListItem>()
+            .expect("Needs to be ListItem")
+            .item()
+            .and_downcast::<sms_output_object::SmsOutputObject>()
+            .expect("The item has to be an `IntegerObject`.")
+            .factorion_dy_panel(list_item, "delivery", "deliverytime");
+
+    });
+    let column_sms_output_delivery =ColumnViewColumn::new(Some("Статус отправки"), Some(factory_sms_output_delivery));
+    let model_sms_output_object: gtk::gio::ListStore = gtk::gio::ListStore::new::<sms_output_object::SmsOutputObject>();
+    let no_selection_sms_output_model = gtk::NoSelection::new(Some(model_sms_output_object.clone()));
+    let selection_sms_output_model = gtk::SingleSelection::new(Some(no_selection_sms_output_model));
+    let column_view_sms_output = gtk::ColumnView::new(Some(selection_sms_output_model));
+    column_view_sms_output.append_column(&column_sms_output_phone);
+    column_view_sms_output.append_column(&column_sms_output_text);
+    column_view_sms_output.append_column(&column_sms_output_sent);
+    column_view_sms_output.append_column(&column_sms_output_delivery);
 
     let text_sms_input_body =gtk::TextBuffer::new(None);
     let textview_sms_input_body =gtk::TextView::with_buffer(&text_sms_input_body);
     textview_sms_input_body.set_widget_name("text_sms_input_body");
     textview_sms_input_body.set_buffer(Some(&text_sms_input_body));
     let dop_panel_for_button_body_input_smst = gtk::Box::builder()
-        .orientation(Orientation::Horizontal)
+        .orientation(Horizontal)
         .build();
     let dop_panel_for_button_body_input_sms = dop_panel_for_button_body_input_smst.clone();
     // Буфер обмена ОС
@@ -461,6 +528,12 @@ fn build_ui(app: &Application) {
     flex_box_sms_output.append(&label);
     flex_box_sms_output.append(&scrolled_sms_output_text);
     flex_box_sms_output.append(&button_sms_output_send);
+    let scrolled_sms_output=gtk::ScrolledWindow::builder()
+        .child(&column_view_sms_output)
+        .height_request(250)
+        .propagate_natural_width(true)
+        .build();
+    flex_box_sms_output.append(&scrolled_sms_output);
     stack.add_titled(&gtk_box_g, Some("Signal"),"Сигнал и батарейка");
     stack.add_titled(&flex_box_list,Some("Phone"),"✆Входящие звонки");
     stack.add_titled(&flex_box_contact,Some("Contact"),"Контакты");
@@ -511,7 +584,29 @@ fn build_ui(app: &Application) {
     button_sms_output_send.connect_clicked(move |x1| {
         let phone = edit_sms_output_phone.text().to_string();
         let text = buffer_sms_output_text.text(&buffer_sms_output_text.start_iter(), &buffer_sms_output_text.end_iter(), false).to_string();
-        println!("{} /n {}", phone, text);
+        //TODO отправка СМС
+        let query = format!("INSERT INTO sms_output (phone, text, sent, sent_time, delivery, delivery_time) VALUES (\"{}\", \"{}\", \"none\", \"none\", \"none\", \"none\");", phone, text);    println!("{}", &query);
+        let a = " SELECT  last_insert_rowid() AS _id FROM sms_output;";
+        let connection = sqlite::open("data").unwrap();
+        if let Ok(()) = connection.execute(query) {
+            let mut statement = connection.prepare(a).unwrap();
+            if statement.iter().count() > 0 {
+                if let Ok(State::Row) = statement.next() {
+                    let sms_output_id = statement.read::<String, _>("_id").unwrap();
+                    println!("id={}", &sms_output_id);
+                    let sms_output_object = sms_output_object::SmsOutputObject::new();
+                    sms_output_object.set_property("id", sms_output_id.to_value());
+                    sms_output_object.set_property("phone", phone.to_value());
+                    sms_output_object.set_property("text", text.to_value());
+                    sms_output_object.set_property("sent", "sent");
+                    sms_output_object.set_property("senttime", "senttime");
+                    sms_output_object.set_property("delivery", "delivery");
+                    sms_output_object.set_property("deliverytime", "deliverytime");
+                    model_sms_output_object.append(&sms_output_object);
+                }
+            }
+        }
+
     });
 
     button_contact_csv.connect_clicked(move |_x1| {
@@ -813,6 +908,7 @@ fn load_css() {
     gtk::style_context_add_provider_for_display(&display, &provider, priority);
 }
 
+
 fn add_label_is_item(list_item: &Object){
     let label = gtk::Label::builder().build();
     label.set_justify(Justification::Left);
@@ -821,6 +917,17 @@ fn add_label_is_item(list_item: &Object){
         .downcast_ref::<ListItem>()
         .expect("error")
         .set_child(Some(&label));
+}
+fn add_panel_is_item(list_item: &Object){
+    let label = gtk::Label::builder().build();
+    let label_1 = gtk::Label::builder().build();
+    let panel = gtk::Box::builder().orientation(Vertical).build();
+    panel.append(&label);
+    panel.append(&label_1);
+    list_item
+        .downcast_ref::<ListItem>()
+        .expect("error")
+        .set_child(Some(&panel));
 }
 
 fn sql_execute(sql: String){
