@@ -167,9 +167,10 @@ fn build_ui(app: &Application) {
     let model_contact_object: gtk::gio::ListStore = gtk::gio::ListStore::new::<contact_object::ContactObject>();
     let no_selection_contact_model = gtk::NoSelection::new(Some(model_contact_object.clone()));
     let selection_contact_model = gtk::SingleSelection::new(Some(no_selection_contact_model));
-
+    println!("1");
     let connection = sqlite::open("data").unwrap();
     let query = "SELECT name, phone FROM contact";
+    println!("2");
     let mut statement = match connection.prepare(query) {
         Ok(st)=> st,
         Err(e) => {
