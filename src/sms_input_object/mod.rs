@@ -2,7 +2,7 @@ use gdk4::glib;
 use gdk4::glib::Object;
 use gdk4::prelude::{Cast, CastNone, ObjectExt};
 use gtk4::{Justification, ListItem};
-use gtk4::prelude::{ListItemExt, WidgetExt};
+use gtk4::prelude::{ListItemExt};
 mod imp;
 
 // Optionally, define a wrapper type to make it more ergonomic to use from Rust

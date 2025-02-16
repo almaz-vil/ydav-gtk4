@@ -12,6 +12,7 @@ mod log_object;
 mod sms_input_delete;
 mod phone_delete;
 mod sms_output_object;
+mod sms_output;
 
 use crate::contact::Contact;
 use crate::info::{Info, Level};
@@ -26,10 +27,12 @@ use gtk::{Application, ApplicationWindow};
 use gtk::{ColumnViewColumn, ListItem};
 use gtk4 as gtk;
 use gtk4::Orientation::{Horizontal, Vertical};
-use gtk4::{Justification, Orientation, WrapMode};
+use gtk4::{Justification, WrapMode};
 use sqlite::{Connection, State};
 use std::io::{BufWriter, Write};
 use std::path::Path;
+use chrono::Local;
+use crate::sms_output::SmsOutputParam;
 
 fn main() {
     let app = Application::builder()
@@ -42,6 +45,7 @@ fn main() {
 }
 
 fn build_ui(app: &Application) {
+    let (sender, receiver) = async_channel::bounded(1);
     let class_info=["info"];
     let gtk_box_horizontal =gtk::Box::builder()
             .orientation(Horizontal)
@@ -322,6 +326,39 @@ fn build_ui(app: &Application) {
     let model_sms_output_object: gtk::gio::ListStore = gtk::gio::ListStore::new::<sms_output_object::SmsOutputObject>();
     let no_selection_sms_output_model = gtk::NoSelection::new(Some(model_sms_output_object.clone()));
     let selection_sms_output_model = gtk::SingleSelection::new(Some(no_selection_sms_output_model));
+    let sender_sms_output = sender.clone();
+    let times_sms_output = times.clone();
+    let address_ip = edit_ip_address.text().to_string().clone();
+    selection_sms_output_model.connect_selection_changed(move |x, _i, _i1| {
+        let select_sms_output = x.item(x.selected())
+            .and_downcast::<sms_output_object::SmsOutputObject>()
+            .expect("The item has to be an `SmsOutputObject`.");
+        let id = select_sms_output.property::<String>("id");
+        let sms_output = match  sms_output::SmsOutput::status(address_ip.clone(), id.as_str()){
+            Ok(sms_output)=> sms_output,
+            Err(error)=>{
+                times_sms_output.set_markup(format!("{}", error).as_str());
+                let sender = sender_sms_output.clone();
+                sender.send_blocking(true).unwrap();
+                return
+            }
+        };
+        let sent = sms_output.status.status.sent.result;
+        let sent_time = sms_output.status.status.sent.time;
+        let delivery = sms_output.status.status.delivery.result;
+        let delivery_time = sms_output.status.status.delivery.time;
+
+        select_sms_output.set_property("sent", sent.clone());
+        select_sms_output.set_property("senttime", sent_time.clone());
+        select_sms_output.set_property("delivery", delivery.clone());
+        select_sms_output.set_property("deliverytime", delivery_time.clone());
+
+        let sql = format!("UPDATE sms_output SET sent='{}', sent_time='{}', delivery='{}', delivery_time='{}' WHERE _id={}", sent, sent_time, delivery, delivery_time, id);
+        sql_execute(sql);
+
+
+
+    });
     let column_view_sms_output = gtk::ColumnView::new(Some(selection_sms_output_model));
     column_view_sms_output.append_column(&column_sms_output_phone);
     column_view_sms_output.append_column(&column_sms_output_text);
@@ -580,8 +617,29 @@ fn build_ui(app: &Application) {
         phone_input_object.set_property("time", statement.read::<String,_>("time").unwrap().as_str());
         model_phone_object.append(&phone_input_object);
     }
+    let sender_sms_output = sender.clone();
+    let times_sms_output = times.clone();
+    let address_ip = edit_ip_address.text().to_string().clone();
+    let connection = sqlite::open("data").unwrap();
+    if let Ok(()) = connection.execute(query) {
+        let mut statement = connection.prepare( " SELECT * FROM sms_output;").unwrap();
+        if statement.iter().count() > 0 {
+            while let Ok(State::Row) = statement.next() {
+                let sms_output_object = sms_output_object::SmsOutputObject::new();
+                sms_output_object.set_property("id", statement.read::<String,_>("_id").unwrap().as_str());
+                sms_output_object.set_property("phone", statement.read::<String,_>("phone").unwrap().as_str());
+                sms_output_object.set_property("text", statement.read::<String,_>("text").unwrap().as_str());
+                sms_output_object.set_property("sent", statement.read::<String,_>("sent").unwrap().as_str());
+                sms_output_object.set_property("senttime", statement.read::<String,_>("sent_time").unwrap().as_str());
+                sms_output_object.set_property("delivery", statement.read::<String,_>("delivery").unwrap().as_str());
+                sms_output_object.set_property("deliverytime", statement.read::<String,_>("delivery_time").unwrap().as_str());
+                model_sms_output_object.append(&sms_output_object);
+            }
+        }
+    }
 
-    button_sms_output_send.connect_clicked(move |x1| {
+
+    button_sms_output_send.connect_clicked(move |_| {
         let phone = edit_sms_output_phone.text().to_string();
         let text = buffer_sms_output_text.text(&buffer_sms_output_text.start_iter(), &buffer_sms_output_text.end_iter(), false).to_string();
         //TODO отправка СМС
@@ -592,22 +650,47 @@ fn build_ui(app: &Application) {
             let mut statement = connection.prepare(a).unwrap();
             if statement.iter().count() > 0 {
                 if let Ok(State::Row) = statement.next() {
-                    let sms_output_id = statement.read::<String, _>("_id").unwrap();
-                    println!("id={}", &sms_output_id);
+                    let id = statement.read::<String, _>("_id").unwrap();
+                    //Получит текущие время и дату
+                    let now = Local::now();
+                    let time_str =  now.format("%Y-%m-%d %H:%M:%S").to_string();
                     let sms_output_object = sms_output_object::SmsOutputObject::new();
-                    sms_output_object.set_property("id", sms_output_id.to_value());
+                    sms_output_object.set_property("id", id.to_value());
                     sms_output_object.set_property("phone", phone.to_value());
                     sms_output_object.set_property("text", text.to_value());
-                    sms_output_object.set_property("sent", "sent");
-                    sms_output_object.set_property("senttime", "senttime");
-                    sms_output_object.set_property("delivery", "delivery");
-                    sms_output_object.set_property("deliverytime", "deliverytime");
+                    sms_output_object.set_property("sent", "нет информации");
+                    sms_output_object.set_property("senttime", &time_str);
+                    sms_output_object.set_property("delivery", "нет информации");
+                    sms_output_object.set_property("deliverytime", time_str);
                     model_sms_output_object.append(&sms_output_object);
+                    let sms_output_param = SmsOutputParam { id, phone, text, };
+                    let sms_output = match  sms_output::SmsOutput::send(address_ip.clone(), sms_output_param){
+                        Ok(phone)=>phone,
+                        Err(error)=>{
+                            times_sms_output.set_markup(format!("{}", error).as_str());
+                            let sender = sender_sms_output.clone();
+                            sender.send_blocking(true).unwrap();
+                            return
+                        }
+                    };
+
+                    let id_model = model_sms_output_object.find(&sms_output_object).expect("не найден");
+                    let item = model_sms_output_object.item(id_model).expect("u");
+                    let sms = item.downcast_ref::<sms_output_object::SmsOutputObject>().expect("error");
+                    sms.set_property("sent", sms_output.status.status.sent.result);
+                    sms.set_property("delivery", sms_output.status.status.delivery.result);
+                    sms.set_property("senttime", sms_output.status.status.sent.time);
+                    sms.set_property("deliverytime", sms_output.status.status.delivery.time);
+                    model_sms_output_object.remove(id_model);
+                    model_sms_output_object.insert(id_model,sms)
+
                 }
             }
         }
 
     });
+
+
 
     button_contact_csv.connect_clicked(move |_x1| {
         let file_filter = gtk::FileFilter::new();
@@ -643,7 +726,6 @@ fn build_ui(app: &Application) {
     });
     let mut level: Level = Level(f64::default());
     let mut level_tep: Level = Level(f64::default());
-    let (sender, receiver) = async_channel::bounded(1);
 
     glib::spawn_future_local( clone!(
             #[weak]
@@ -861,7 +943,7 @@ fn build_ui(app: &Application) {
             log_object.set_property("log", format!("Лог:{}", log.json).as_str());
             model_log.append(&log_object)
         }
-        // TODO Есть новые СМС! Реакция?
+
         if log.info.sms>0{
             label_met.set_visible(true);
             button_input_sms.set_sensitive(true);
