@@ -170,7 +170,27 @@ fn build_ui(app: &Application) {
 
     let connection = sqlite::open("data").unwrap();
     let query = "SELECT name, phone FROM contact";
-    let mut statement = connection.prepare(query).unwrap();
+    let mut statement = match connection.prepare(query) {
+        Ok(st)=> st,
+        Err(e) => {
+            let box_error = gtk::Box::builder().orientation(Horizontal).build();
+            let label = gtk::Label::new(Some(format!("Ошибка \"{}\" базы данных. \n Будет создана новая база. Подождите ... ", e).as_str()));
+            box_error.append(&label);
+            let window = ApplicationWindow::builder()
+                .application(app)
+                .title("Ydav-gtk")
+                .default_height(300)
+                .child(&box_error)
+                .build();
+            window.set_widget_name("window");
+            load_css();
+            window.present();
+            let sql = include_str!("sql.in").to_string();
+            sql_execute(sql);
+            label.set_label("Создана новая база данный. Перезапустите программу.");
+            return;
+        }
+    };
     while let Ok(State::Row) = statement.next() {
         let name = statement.read::<String,_>("name").unwrap();
         let phone = statement.read::<String,_>("phone").unwrap();

@@ -1,0 +1,34 @@
+BEGIN TRANSACTION;
+CREATE TABLE IF NOT EXISTS "contact" (
+"_id"	INTEGER,
+"name"	TEXT,
+"phone"	TEXT,
+PRIMARY KEY("_id" AUTOINCREMENT)
+);
+CREATE TABLE IF NOT EXISTS "sms_input" (
+"_id"	integer,
+"id_na_android"	TEXT,
+"phone"	TEXT,
+"time"	TEXT,
+"body"	TEXT,
+PRIMARY KEY("_id" AUTOINCREMENT)
+);
+CREATE TABLE IF NOT EXISTS "phone_input" (
+"time"	TEXT,
+"phone"	TEXT,
+"_id"	integer,
+"id_na_android"	TEXT NOT NULL,
+"status"	TEXT,
+CONSTRAINT "phone_input_pk" PRIMARY KEY("_id" AUTOINCREMENT)
+);
+CREATE TABLE IF NOT EXISTS "sms_output" (
+"_id"	integer,
+"phone"	TEXT,
+"text"	TEXT,
+"sent"	TEXT,
+"sent_time"	TEXT,
+"delivery"	TEXT,
+"delivery_time"	TEXT,
+PRIMARY KEY("_id" AUTOINCREMENT)
+);
+COMMIT;
