@@ -1,0 +1,81 @@
+.panel{
+    background-color: black;
+  }
+.panel_win{
+  color: white;
+  background-color: black;
+  border-top: 2px solid yellow;
+}
+  #label_log{
+    background-color: white;
+    font: 14px sans-serif;
+  }
+
+  #edit_ip{
+    margin-top: .5em;
+    margin-left: .5em;
+    border:  2px solid green;
+  }
+  
+  .info{
+    background-color:black;
+    color: white;
+    padding-right: .4em;
+  }
+
+  #statusbar{
+    background-color: black;
+    color: white;
+    border-top: 2px solid yellow;
+    margin-bottom: 2px;
+  }
+
+  #label_count_contact{
+    background-color: white;
+  }
+
+  #text_sms_input_body{
+    color: black;
+    background-color: yellow;
+    border: 2px solid black;
+    padding: 2px;
+    padding-left: 6px;
+  }
+
+
+
+.button {
+  background-image: none;
+  background-color: yellow;
+  color: black;
+  border: 4px solid darkgoldenrod;
+  margin: 1px;
+  padding: 2px;
+}
+.button:hover{
+  background-image: none;
+  background-color: yellow;
+  color: black;
+  border: 4px solid darkgoldenrod;
+  margin: 1px;
+  padding: 2px;
+}
+#button{
+  background-image: none;
+  background-color: beige;
+  color: black;
+  border: 2px solid darkgoldenrod;
+  margin: 2px;
+  padding: 2px;
+}
+
+#log{
+    background-color: green;
+  }
+
+#new_sms_input{
+  border: 2px solid red;
+  color: red;
+  font-weight: bold;
+  background-color: darkblue;
+}

@@ -27,24 +27,25 @@ use gtk::{Application, ApplicationWindow};
 use gtk::{ColumnViewColumn, ListItem};
 use gtk4 as gtk;
 use gtk4::Orientation::{Horizontal, Vertical};
-use gtk4::{Justification, WrapMode};
+use gtk4::{gio, Justification, WrapMode};
 use sqlite::{Connection, State};
 use std::io::{BufWriter, Write};
-use std::path::Path;
 use chrono::Local;
 use crate::sms_output::SmsOutputParam;
 
 fn main() {
+    gio::resources_register_include!("compiled.gresource").unwrap();
     let app = Application::builder()
         .application_id("ru.Dimon.Ydav-gtk")
         .build();
-
     app.connect_activate(build_ui);
-
     app.run();
 }
 
 fn build_ui(app: &Application) {
+    let icon_theme = gtk::IconTheme::new();
+    icon_theme.add_resource_path("ru/Dimon/Ydav-gtk");
+    icon_theme.add_resource_path("ru/Dimon/Ydav-gtk/icons");
     let (sender, receiver) = async_channel::bounded(1);
     let class_info=["info"];
     let gtk_box_horizontal =gtk::Box::builder()
@@ -109,6 +110,7 @@ fn build_ui(app: &Application) {
 
     let times = gtk::Label::new(Some(""));
     let button_stop_info = gtk::Button::new();
+    button_stop_info.set_css_classes(&["button"]);
     button_stop_info.set_label("▶");
     let status = gtk::Box::builder()
         .orientation(Horizontal)
@@ -131,7 +133,7 @@ fn build_ui(app: &Application) {
     gtk_box_g.append(&gtk_box_horizontal2);
     gtk_box_g.append(&edit_ip_address);
     gtk_box_g.set_homogeneous(false);
-    gtk_box_g.set_widget_name("panel");
+    gtk_box_g.set_css_classes(&["panel_win"]);
 
     gtk_box_horizontal.set_visible(false);
     gtk_box_horizontal2.set_visible(false);
@@ -167,10 +169,8 @@ fn build_ui(app: &Application) {
     let model_contact_object: gtk::gio::ListStore = gtk::gio::ListStore::new::<contact_object::ContactObject>();
     let no_selection_contact_model = gtk::NoSelection::new(Some(model_contact_object.clone()));
     let selection_contact_model = gtk::SingleSelection::new(Some(no_selection_contact_model));
-    println!("1");
     let connection = sqlite::open("data").unwrap();
     let query = "SELECT name, phone FROM contact";
-    println!("2");
     let mut statement = match connection.prepare(query) {
         Ok(st)=> st,
         Err(e) => {
@@ -182,6 +182,7 @@ fn build_ui(app: &Application) {
                 .title("Ydav-gtk")
                 .default_height(300)
                 .child(&box_error)
+                .icon_name("ru_dimon_ydav_2024")
                 .build();
             window.set_widget_name("window");
             load_css();
@@ -418,22 +419,22 @@ fn build_ui(app: &Application) {
             if button_one==None{
                 button_one=Some(button.clone());
             };
-            button.set_css_classes(&["button_sms_input_body"]);
+            button.set_css_classes(&["button"]);
             let clipboardt=clipboard.clone();
             let panel = button_one.clone();
             button.connect_clicked(move|b|{
                 clipboardt.set_text(b.label().unwrap().as_str());
                 if let Some(u) = &panel{
                     u.set_widget_name("");
-                    u.set_css_classes(&["button_sms_input_body"]);
+                    u.set_css_classes(&["button"]);
                     let mut last = u.next_sibling();
                     while let Some(v)  = last {
                         v.set_widget_name("");
-                        v.set_css_classes(&["button_sms_input_body"]);
+                        v.set_css_classes(&["button"]);
                         last =  v.next_sibling();
                     }
                 }
-                b.set_widget_name("button_sms_input_body");
+                b.set_widget_name("button");
             });
             dop_panel_for_button_body_input_sms.append(&button);
         }) ;
@@ -446,10 +447,10 @@ fn build_ui(app: &Application) {
     let flex_box_list=gtk::Box::builder()
         .orientation(Vertical)
         .build();
-    let button_list_get=gtk::Button::builder()
+    let button_phote_get =gtk::Button::builder()
         .label("Запрос звонков")
         .build();
-    flex_box_list.append(&button_list_get);
+    flex_box_list.append(&button_phote_get);
     let scrolled_list=gtk::ScrolledWindow::builder()
         .child(&column_view_phone)
         .height_request(250)
@@ -505,9 +506,11 @@ fn build_ui(app: &Application) {
     let button_contact_get=gtk::Button::builder()
         .label("Запрос контактов")
         .build();
+    button_contact_get.set_css_classes(&["button"]);
     let button_contact_csv=gtk::Button::builder()
         .label("Сохранить в формате CSV")
         .build();
+    button_contact_csv.set_css_classes(&["button"]);
     let csv_model_contact = model_contact_object.clone();
     let flex_box_contact=gtk::Box::builder()
         .orientation(Vertical).build();
@@ -529,6 +532,7 @@ fn build_ui(app: &Application) {
         .label("Входящих СМС (загрузка с телефона)")
         .sensitive(false)
         .build();
+    button_sms_input_get.set_css_classes(&["button"]);
 
     let flex_box_sms_input =gtk::Box::builder()
         .orientation(Vertical).build();
@@ -561,6 +565,7 @@ fn build_ui(app: &Application) {
         "name",
     );
     let combo_box_phone = gtk::DropDown::new(Some(model_contact_object.clone()), Some(exp));
+    combo_box_phone.set_css_classes(&["button"]);
     let edit_phone = edit_sms_output_phone.clone();
     combo_box_phone.connect_selected_notify(move |dd|{
        let binding = dd.selected_item().unwrap();
@@ -592,6 +597,8 @@ fn build_ui(app: &Application) {
         .propagate_natural_width(true)
         .build();
     flex_box_sms_output.append(&scrolled_sms_output);
+    button_phote_get.set_css_classes(&["button"]);
+    stack.set_css_classes(&["panel_win"]);
     stack.add_titled(&gtk_box_g, Some("Signal"),"Сигнал и батарейка");
     stack.add_titled(&flex_box_list,Some("Phone"),"✆Входящие звонки");
     stack.add_titled(&flex_box_contact,Some("Contact"),"Контакты");
@@ -601,6 +608,7 @@ fn build_ui(app: &Application) {
     let stack_switcher = gtk::StackSwitcher::builder()
         .stack(&stack)
         .build();
+    stack_switcher.set_css_classes(&["button"]);
     let gtk_box_stack=gtk::Box::builder()
         .orientation(Vertical)
         .build();
@@ -612,6 +620,7 @@ fn build_ui(app: &Application) {
         .title("Ydav-gtk")
         .default_height(300)
         .child(&gtk_box_stack)
+        .icon_name("ru_dimon_ydav_2024")
         .build();
     window.set_widget_name("window");
     load_css();
@@ -726,7 +735,7 @@ fn build_ui(app: &Application) {
         save_dialog.save(Some(&window), Some(&cancellable), move |x2| {
             let path_file = match x2 {
                 Ok(f)=>f.path(),
-                Err(e)=> panic!("{}",e)
+                Err(e)=> return
             };
             let path = path_file.unwrap();
             let file_contact_csv = std::fs::File::create(path).expect("Ошибка создания файла!");
@@ -770,7 +779,7 @@ fn build_ui(app: &Application) {
     let address_ip = edit_ip_address.text().to_string().clone();
     let times_phone = times.clone();
     let label_met = label_met_new_phone_input.clone();
-    button_list_get.connect_clicked(move |_b| {
+    button_phote_get.connect_clicked(move |_b| {
         let phone = match Phone::connect(address_ip.clone()){
             Ok(phone)=>phone,
             Err(error)=>{
@@ -1007,7 +1016,7 @@ fn load_css() {
     let display = gdk::Display::default().expect("Could not get default display.");
     let provider = gtk::CssProvider::new();
     let priority = gtk::STYLE_PROVIDER_PRIORITY_APPLICATION;
-    provider.load_from_path(Path::new("main.css"));
+    provider.load_from_resource("ru/Dimon/Ydav-gtk/main.css");
     gtk::style_context_add_provider_for_display(&display, &provider, priority);
 }
 

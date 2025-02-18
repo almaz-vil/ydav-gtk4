@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gresources>
+    <gresource prefix="ru/Dimon/Ydav-gtk">
+        <file compressed="true">main.css</file>
+    </gresource>
+    <gresource prefix="ru/Dimon/Ydav-gtk/icons">
+        <file alias="16x16/actions/ru_dimon_ydav_2024.png" compressed="true" >ru_dimon_ydav_2024.png</file>
+        <file alias="32x32/actions/ru_dimon_ydav_2024.png" compressed="true" >ru_dimon_ydav_2024.png</file>
+        <file alias="64x64/actions/ru_dimon_ydav_2024.png" compressed="true" >ru_dimon_ydav_2024.png</file>
+        <file alias="128x128/actions/ru_dimon_ydav_2024.png" compressed="true" >ru_dimon_ydav_2024.png</file>
+        <file alias="256x256/actions/ru_dimon_ydav_2024.png" compressed="true" >ru_dimon_ydav_2024.png</file>
+        <file alias="512x512/actions/ru_dimon_ydav_2024.png" compressed="true" >ru_dimon_ydav_2024.png</file>
+    </gresource>
+</gresources>
