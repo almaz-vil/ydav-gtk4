@@ -11,8 +11,10 @@ gdk4="0.9.5"
 serde_json="*"
 serde = { version = "*", features = ["derive"] }
 async-channel = "2.3.1"
-sqlite = "0.36.1"
+sqlite = "0.36.2"
 regex = "1.11.1"
 chrono = "0.4.39"
 [build-dependencies]
 glib-build-tools = "0.20.0"
+[package.metadata.appimage]
+auto_link = true

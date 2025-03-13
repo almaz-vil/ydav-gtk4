@@ -19,7 +19,7 @@ use crate::info::{Info, Level};
 use crate::phone::Phone;
 use crate::sms_input::SmsInput;
 use gdk4 as gdk;
-use gdk4::glib::{clone, ControlFlow, Object};
+use gdk4::glib::{clone, home_dir, ControlFlow, Object};
 use gdk4::pango::EllipsizeMode;
 use gtk::glib;
 use gtk::prelude::*;
@@ -169,7 +169,29 @@ fn build_ui(app: &Application) {
     let model_contact_object: gtk::gio::ListStore = gtk::gio::ListStore::new::<contact_object::ContactObject>();
     let no_selection_contact_model = gtk::NoSelection::new(Some(model_contact_object.clone()));
     let selection_contact_model = gtk::SingleSelection::new(Some(no_selection_contact_model));
-    let connection = sqlite::open("data").unwrap();
+    let connection = match sqlite::open(home_dir().join("ydav2024-data")) {
+        Ok(st)=> st,
+        Err(e) => {
+            let box_error = gtk::Box::builder().orientation(Horizontal).build();
+            let label = gtk::Label::new(Some(format!("Ошибка \"{}\" базы данных. \n Будет создана новая база. Подождите ... ", e).as_str()));
+            box_error.append(&label);
+            let window = ApplicationWindow::builder()
+                .application(app)
+                .title("Ydav-gtk")
+                .default_height(300)
+                .child(&box_error)
+                .icon_name("ru_dimon_ydav_2024")
+                .build();
+            window.set_widget_name("window");
+            load_css();
+            window.present();
+            let sql = include_str!("sql.in").to_string();
+            sql_execute(sql);
+            label.set_label("Создана новая база данный. Перезапустите программу.");
+            return;
+        }
+    };
+
     let query = "SELECT name, phone FROM contact";
     let mut statement = match connection.prepare(query) {
         Ok(st)=> st,
@@ -627,7 +649,7 @@ fn build_ui(app: &Application) {
     // Show the window.
     window.present();
 
-    let connection = sqlite::open("data").unwrap();
+    let connection = sql_connection();
     let query = "SELECT id_na_android, phone, time, body FROM sms_input ORDER BY _id DESC ";
     let mut statement = connection.prepare(query).unwrap();
     while let Ok(State::Row) = statement.next() {
@@ -650,7 +672,7 @@ fn build_ui(app: &Application) {
     let sender_sms_output = sender.clone();
     let times_sms_output = times.clone();
     let address_ip = edit_ip_address.text().to_string().clone();
-    let connection = sqlite::open("data").unwrap();
+    let connection = sql_connection();
     if let Ok(()) = connection.execute(query) {
         let mut statement = connection.prepare( " SELECT * FROM sms_output;").unwrap();
         if statement.iter().count() > 0 {
@@ -675,7 +697,7 @@ fn build_ui(app: &Application) {
         //TODO отправка СМС
         let query = format!("INSERT INTO sms_output (phone, text, sent, sent_time, delivery, delivery_time) VALUES (\"{}\", \"{}\", \"none\", \"none\", \"none\", \"none\");", phone, text);    println!("{}", &query);
         let a = " SELECT  last_insert_rowid() AS _id FROM sms_output;";
-        let connection = sqlite::open("data").unwrap();
+        let connection = sql_connection();
         if let Ok(()) = connection.execute(query) {
             let mut statement = connection.prepare(a).unwrap();
             if statement.iter().count() > 0 {
@@ -735,7 +757,7 @@ fn build_ui(app: &Application) {
         save_dialog.save(Some(&window), Some(&cancellable), move |x2| {
             let path_file = match x2 {
                 Ok(f)=>f.path(),
-                Err(e)=> return
+                Err(_e)=> return
             };
             let path = path_file.unwrap();
             let file_contact_csv = std::fs::File::create(path).expect("Ошибка создания файла!");
@@ -790,7 +812,7 @@ fn build_ui(app: &Application) {
             }
         };
         times_phone.set_markup(format!("{}", phone.phones.time).as_str());
-        let connection = sqlite::open("data").unwrap();
+        let connection = sql_connection();
         let mut sql ="BEGIN TRANSACTION;".to_string();
         for phone in &phone.phones.phone{
             let phone_object = phone_object::PhoneObject::new();
@@ -823,7 +845,7 @@ fn build_ui(app: &Application) {
         let mut param_where_sql=String::new();
         let mut where_sql=String::new();
         let query = "SELECT _id, id_na_android FROM phone_input WHERE id_na_android>0";
-        let connection = sqlite::open("data").unwrap();
+        let connection = sql_connection();
         let mut statement = connection.prepare(query).unwrap();
         if statement.iter().count()>0 {
             while let Ok(State::Row) = statement.next() {
@@ -909,7 +931,7 @@ fn build_ui(app: &Application) {
         let mut param_where_sql=String::new();
         let mut where_sql=String::new();
         let query = "SELECT _id, id_na_android FROM sms_input WHERE id_na_android>0";
-        let connection = sqlite::open("data").unwrap();
+        let connection = sql_connection();
         let mut statement = connection.prepare(query).unwrap();
         if statement.iter().count()>0 {
             while let Ok(State::Row) = statement.next() {
@@ -1043,10 +1065,15 @@ fn add_panel_is_item(list_item: &Object){
 }
 
 fn sql_execute(sql: String){
-    let connection = sqlite::open("data").unwrap();
+    let connection = sql_connection();
     if let Err(e)=connection.execute(&sql){
         println!("Ошибка {} тут {}", e, sql);
     }
+}
+
+fn sql_connection()->Connection{
+    let home =  home_dir().join("ydav2024-data");
+    sqlite::open(&home).expect(format!("не смог открыть базу данных {:?}", &home).as_str())
 }
 
 fn find_phone(phone: String, connection: &Connection)->String {

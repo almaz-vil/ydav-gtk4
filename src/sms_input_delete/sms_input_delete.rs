@@ -8,6 +8,7 @@ pub struct SmsCount {
     pub time: String,
     pub sms: usize
 }
+#[warn(dead_code)]
 pub struct SmsInputDelete{
     pub sms: SmsCount,
     pub json: String
