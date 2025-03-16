@@ -27,7 +27,7 @@ use gtk::{Application, ApplicationWindow};
 use gtk::{ColumnViewColumn, ListItem};
 use gtk4 as gtk;
 use gtk4::Orientation::{Horizontal, Vertical};
-use gtk4::{gio, Justification, WrapMode};
+use gtk4::{gio, Align, Justification, WrapMode};
 use sqlite::{Connection, State};
 use std::io::{BufWriter, Write};
 use chrono::Local;
@@ -107,7 +107,6 @@ fn build_ui(app: &Application) {
        .orientation(Vertical)
        .build();
     let stack = gtk::Stack::new();
-
     let times = gtk::Label::new(Some(""));
     let button_stop_info = gtk::Button::new();
     button_stop_info.set_css_classes(&["button"]);
@@ -116,6 +115,7 @@ fn build_ui(app: &Application) {
         .orientation(Horizontal)
         .build();
     status.set_widget_name("statusbar");
+    status.set_valign(Align::Start);
     status.append(&times);
     status.append(&button_stop_info);
     let label_met_new_phone_input = gtk::Label::new(Some("Новый звонок"));
@@ -134,9 +134,9 @@ fn build_ui(app: &Application) {
     gtk_box_g.append(&edit_ip_address);
     gtk_box_g.set_homogeneous(false);
     gtk_box_g.set_css_classes(&["panel_win"]);
-
     gtk_box_horizontal.set_visible(false);
     gtk_box_horizontal2.set_visible(false);
+    let edit_sms_output_phone = gtk::Entry::new();
     //****Контакты********************************************************************************
     let factory_contact_phone = gtk::SignalListItemFactory::new();
     factory_contact_phone.connect_setup( move |_, list_item| {
@@ -166,6 +166,7 @@ fn build_ui(app: &Application) {
             .factorion(list_item, "name");
     });
     let column_contact_name =ColumnViewColumn::new(Some("Имя"), Some(factory_contact_name));
+   column_contact_name.set_expand(true);
     let model_contact_object: gtk::gio::ListStore = gtk::gio::ListStore::new::<contact_object::ContactObject>();
     let no_selection_contact_model = gtk::NoSelection::new(Some(model_contact_object.clone()));
     let selection_contact_model = gtk::SingleSelection::new(Some(no_selection_contact_model));
@@ -192,7 +193,7 @@ fn build_ui(app: &Application) {
         }
     };
 
-    let query = "SELECT name, phone FROM contact";
+    let query = "SELECT name, phone FROM contact ORDER BY name ASC";
     let mut statement = match connection.prepare(query) {
         Ok(st)=> st,
         Err(e) => {
@@ -223,9 +224,17 @@ fn build_ui(app: &Application) {
         contact_object.set_property("phone", phone.as_str());
         model_contact_object.append(&contact_object);
     }
-    let column_view_contact = gtk::ColumnView::new(Some(selection_contact_model));
+    let column_view_contact = gtk::ColumnView::new(Some(selection_contact_model.clone()));
     column_view_contact.append_column(&column_contact_name);
     column_view_contact.append_column(&column_contact_phone);
+    let edit_sms_output_phone_contact = edit_sms_output_phone.clone();
+    selection_contact_model.connect_selection_changed(move |x, _i, _i1| {
+        let select_contact = x.item(x.selected())
+            .and_downcast::<contact_object::ContactObject>()
+            .expect("The item has to be an `SmsOutputObject`.");
+        let phone = select_contact.property::<String>("phone");
+        edit_sms_output_phone_contact.set_text(phone.as_str());
+    });
 
     //*********Входящие вызовы ***********************************************
     let factory_phone = gtk::SignalListItemFactory::new();
@@ -466,19 +475,20 @@ fn build_ui(app: &Application) {
     column_view_sms_input.append_column(&column_sms_input_phone);
     column_view_sms_input.append_column(&column_sms_input_body);
 
-    let flex_box_list=gtk::Box::builder()
+    let flex_box_list_phone =gtk::Box::builder()
         .orientation(Vertical)
         .build();
-    let button_phote_get =gtk::Button::builder()
+    let button_phone_get =gtk::Button::builder()
         .label("Запрос звонков")
         .build();
-    flex_box_list.append(&button_phote_get);
-    let scrolled_list=gtk::ScrolledWindow::builder()
+    flex_box_list_phone.append(&button_phone_get);
+    let scrolled_list_phone =gtk::ScrolledWindow::builder()
         .child(&column_view_phone)
-        .height_request(250)
         .propagate_natural_width(true)
         .build();
-    flex_box_list.append(&scrolled_list);
+    scrolled_list_phone.set_vexpand(true);
+    scrolled_list_phone.set_vexpand_set(true);
+    flex_box_list_phone.append(&scrolled_list_phone);
 
     let factory_log = gtk::SignalListItemFactory::new();
     factory_log.connect_setup(move |_, list_item| {
@@ -516,11 +526,16 @@ fn build_ui(app: &Application) {
     let flex_box_log=gtk::Box::builder()
         .orientation(Vertical).build();
     flex_box_log.set_widget_name("log");
+    column_view_sms_output.set_vexpand(true);
+    column_view_sms_output.set_vexpand_set(true);
+    column_view_log.set_vexpand(true);
+    column_view_log.set_vexpand_set(true);
     let scrolled_log=gtk::ScrolledWindow::builder()
         .child(&column_view_log)
-        .height_request(250)
         .propagate_natural_width(true)
         .build();
+    scrolled_log.set_vexpand(true);
+    scrolled_log.set_vexpand_set(true);
     let check_log = gtk::CheckButton::with_label("Вести запись в лог");
     flex_box_log.append(&check_log);
     flex_box_log.append(&scrolled_log);
@@ -544,9 +559,10 @@ fn build_ui(app: &Application) {
     flex_box_contact.append(&label_count_contact);
     let scrolled_contact=gtk::ScrolledWindow::builder()
         .child(&column_view_contact)
-        .height_request(250)
         .propagate_natural_width(true)
         .build();
+    scrolled_contact.set_vexpand(true);
+    scrolled_contact.set_vexpand_set(true);
     flex_box_contact.append(&scrolled_contact);
 
 
@@ -561,9 +577,10 @@ fn build_ui(app: &Application) {
     flex_box_sms_input.append(&button_sms_input_get);
     let scrolled_sms_input =gtk::ScrolledWindow::builder()
         .child(&column_view_sms_input)
-        .height_request(250)
         .propagate_natural_width(true)
         .build();
+    scrolled_sms_input.set_vexpand(true);
+    scrolled_sms_input.set_vexpand_set(true);
     flex_box_sms_input.append(&scrolled_sms_input);
     textview_sms_input_body.set_wrap_mode(WrapMode::Word);
     textview_sms_input_body.set_editable(false);
@@ -580,7 +597,6 @@ fn build_ui(app: &Application) {
     let flex_box_sms_output_boxh =gtk::Box::builder()
         .orientation(Horizontal).build();
     let label = gtk::Label::new(Some("Выбор номера телефона"));
-    let edit_sms_output_phone = gtk::Entry::new();
     let exp = gtk::PropertyExpression::new(
         contact_object::ContactObject::static_type(),
         None::<gtk::Expression>,
@@ -615,14 +631,15 @@ fn build_ui(app: &Application) {
     flex_box_sms_output.append(&button_sms_output_send);
     let scrolled_sms_output=gtk::ScrolledWindow::builder()
         .child(&column_view_sms_output)
-        .height_request(250)
         .propagate_natural_width(true)
         .build();
+    scrolled_sms_output.set_vexpand(true);
+    scrolled_sms_output.set_vexpand_set(true);
     flex_box_sms_output.append(&scrolled_sms_output);
-    button_phote_get.set_css_classes(&["button"]);
+    button_phone_get.set_css_classes(&["button"]);
     stack.set_css_classes(&["panel_win"]);
     stack.add_titled(&gtk_box_g, Some("Signal"),"Сигнал и батарейка");
-    stack.add_titled(&flex_box_list,Some("Phone"),"✆Входящие звонки");
+    stack.add_titled(&flex_box_list_phone, Some("Phone"), "✆Входящие звонки");
     stack.add_titled(&flex_box_contact,Some("Contact"),"Контакты");
     stack.add_titled(&flex_box_sms_input,Some("InputSMS"),"Входящие СМС");
     stack.add_titled(&flex_box_sms_output,Some("OutputSMS"),"СМС");
@@ -633,20 +650,22 @@ fn build_ui(app: &Application) {
     stack_switcher.set_css_classes(&["button"]);
     let gtk_box_stack=gtk::Box::builder()
         .orientation(Vertical)
+        .halign(Align::Fill)
+        .valign(Align::Fill)
         .build();
     gtk_box_stack.append(&stack_switcher);
+    stack.set_vexpand(true);
+    stack.set_vexpand_set(true);
     gtk_box_stack.append(&stack);
     gtk_box_stack.append(&status);
     let window = ApplicationWindow::builder()
         .application(app)
         .title("Ydav-gtk")
-        .default_height(300)
         .child(&gtk_box_stack)
         .icon_name("ru_dimon_ydav_2024")
         .build();
     window.set_widget_name("window");
     load_css();
-    // Show the window.
     window.present();
 
     let connection = sql_connection();
@@ -695,7 +714,7 @@ fn build_ui(app: &Application) {
         let phone = edit_sms_output_phone.text().to_string();
         let text = buffer_sms_output_text.text(&buffer_sms_output_text.start_iter(), &buffer_sms_output_text.end_iter(), false).to_string();
         //TODO отправка СМС
-        let query = format!("INSERT INTO sms_output (phone, text, sent, sent_time, delivery, delivery_time) VALUES (\"{}\", \"{}\", \"none\", \"none\", \"none\", \"none\");", phone, text);    println!("{}", &query);
+        let query = format!("INSERT INTO sms_output (phone, text, sent, sent_time, delivery, delivery_time) VALUES (\"{}\", \"{}\", \"none\", \"none\", \"none\", \"none\");", phone, text);
         let a = " SELECT  last_insert_rowid() AS _id FROM sms_output;";
         let connection = sql_connection();
         if let Ok(()) = connection.execute(query) {
@@ -801,7 +820,7 @@ fn build_ui(app: &Application) {
     let address_ip = edit_ip_address.text().to_string().clone();
     let times_phone = times.clone();
     let label_met = label_met_new_phone_input.clone();
-    button_phote_get.connect_clicked(move |_b| {
+    button_phone_get.connect_clicked(move |_b| {
         let phone = match Phone::connect(address_ip.clone()){
             Ok(phone)=>phone,
             Err(error)=>{
