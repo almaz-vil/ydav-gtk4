@@ -42,7 +42,16 @@
     padding-left: 6px;
   }
 
+.button_politic{
+  background-image: none;
+  background-color: black;
+  color: white;
+}
 
+.button_politic:hover{
+  background-color: white;
+  color: black;
+}
 
 .button {
   background-image: none;

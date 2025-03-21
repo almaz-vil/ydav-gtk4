@@ -13,11 +13,15 @@ mod sms_input_delete;
 mod phone_delete;
 mod sms_output_object;
 mod sms_output;
+mod config;
 
+use crate::config::Config;
 use crate::contact::Contact;
 use crate::info::{Info, Level};
 use crate::phone::Phone;
 use crate::sms_input::SmsInput;
+use crate::sms_output::SmsOutputParam;
+use chrono::Local;
 use gdk4 as gdk;
 use gdk4::glib::{clone, home_dir, ControlFlow, Object};
 use gdk4::pango::EllipsizeMode;
@@ -26,12 +30,11 @@ use gtk::prelude::*;
 use gtk::{Application, ApplicationWindow};
 use gtk::{ColumnViewColumn, ListItem};
 use gtk4 as gtk;
+use gtk4::glib::Propagation;
 use gtk4::Orientation::{Horizontal, Vertical};
 use gtk4::{gio, Align, Justification, WrapMode};
-use sqlite::{Connection, State};
+use sqlite::{Connection, State, Statement};
 use std::io::{BufWriter, Write};
-use chrono::Local;
-use crate::sms_output::SmsOutputParam;
 
 fn main() {
     gio::resources_register_include!("compiled.gresource").unwrap();
@@ -43,6 +46,11 @@ fn main() {
 }
 
 fn build_ui(app: &Application) {
+    let mut config = Config::new();
+    if let Err(_e)=config.load(){
+        let sql = include_str!("sql.in").to_string();
+        Config::sql_execute(sql);
+    };
     let icon_theme = gtk::IconTheme::new();
     icon_theme.add_resource_path("ru/Dimon/Ydav-gtk");
     icon_theme.add_resource_path("ru/Dimon/Ydav-gtk/icons");
@@ -50,7 +58,7 @@ fn build_ui(app: &Application) {
     let class_info=["info"];
     let gtk_box_horizontal =gtk::Box::builder()
             .orientation(Horizontal)
-            .halign(gtk::Align::Fill)
+            .halign(Align::Fill)
             .build();
     let label_battery_level = gtk::Label::new(Some("_"));
     label_battery_level.set_css_classes(&class_info);
@@ -82,7 +90,7 @@ fn build_ui(app: &Application) {
     gtk_box_horizontal.append(&label_battery_status);
     let gtk_box_horizontal2 =gtk::Box::builder()
         .orientation(Horizontal)
-        .halign(gtk::Align::Fill)
+        .halign(Align::Fill)
         .build();
     gtk_box_horizontal.set_css_classes(&["panel"]);
     gtk_box_horizontal2.set_css_classes(&["panel"]);
@@ -100,7 +108,8 @@ fn build_ui(app: &Application) {
     label_rssi.set_css_classes(&class_info);
     gtk_box_horizontal2.append(&label_rssi);
     let edit_ip_address = gtk::Entry::new();
-    edit_ip_address.set_text("192.168.1.91:38300");
+    let ip = config.param.entry("ip".to_string()).or_insert_with(||{"192.168.1.91:38300".to_string()});
+    edit_ip_address.set_text(ip);
     edit_ip_address.set_widget_name("edit_ip");
     
     let gtk_box_g=gtk::Box::builder()
@@ -132,6 +141,59 @@ fn build_ui(app: &Application) {
     gtk_box_g.append(&gtk_box_horizontal);
     gtk_box_g.append(&gtk_box_horizontal2);
     gtk_box_g.append(&edit_ip_address);
+    let label_politic = gtk::Label::new(Some("Продолжая использовать программу Вы соглашаетесь с "));
+    let button_politic = gtk::Button::with_label("Политикой конфиденциальности");
+    let politic = config.param.entry("politic".to_string()).or_insert_with(||{"".to_string()});
+    if !politic.is_empty(){
+        label_politic.set_visible(false);
+        button_politic.set_visible(false);
+    }
+    button_politic.set_css_classes(&["button_politic"]);
+    button_politic.connect_clicked(move |_x1| {
+        let text_politic =gtk::TextBuffer::new(None);
+        let textview =gtk::TextView::with_buffer(&text_politic);
+        textview.set_widget_name("text_sms_input_body");
+        textview.set_wrap_mode(WrapMode::Word);
+        textview.set_buffer(Some(&text_politic));
+        let scrolled_politic =gtk::ScrolledWindow::builder()
+            .child(&textview)
+            .propagate_natural_width(true)
+            .build();
+        scrolled_politic.set_vexpand(true);
+        scrolled_politic.set_vexpand_set(true);
+        let sql = include_str!("politic.in").to_string();
+        text_politic.set_text(sql.as_str());
+        let button_close = gtk::Button::with_label("Ознакомлен");
+
+        let gtk_box_politic = gtk::Box::builder()
+            .orientation(Vertical)
+            .build();
+        gtk_box_politic.append(&scrolled_politic);
+        gtk_box_politic.append(&button_close);
+
+        let window = gtk::Window::builder()
+            .title("Ydav-gtk")
+            .height_request(320)
+            .width_request(360)
+            .child(&gtk_box_politic)
+            .icon_name("ru_dimon_ydav_2024")
+            .build();
+        let win = window.clone();
+        button_close.connect_clicked(move |_x1| {
+            let mut config = Config::new();
+            config.param.insert("politic".to_string(), "1".to_string());
+            config.save();
+            win.close();
+        });
+        window.present();
+
+    });
+    let panel_box_politic = gtk::Box::builder()
+        .orientation(Horizontal)
+        .build();
+    panel_box_politic.append(&label_politic);
+    panel_box_politic.append(&button_politic);
+    gtk_box_g.append(&panel_box_politic);
     gtk_box_g.set_homogeneous(false);
     gtk_box_g.set_css_classes(&["panel_win"]);
     gtk_box_horizontal.set_visible(false);
@@ -167,32 +229,10 @@ fn build_ui(app: &Application) {
     });
     let column_contact_name =ColumnViewColumn::new(Some("Имя"), Some(factory_contact_name));
    column_contact_name.set_expand(true);
-    let model_contact_object: gtk::gio::ListStore = gtk::gio::ListStore::new::<contact_object::ContactObject>();
+    let model_contact_object: gio::ListStore = gio::ListStore::new::<contact_object::ContactObject>();
     let no_selection_contact_model = gtk::NoSelection::new(Some(model_contact_object.clone()));
     let selection_contact_model = gtk::SingleSelection::new(Some(no_selection_contact_model));
-    let connection = match sqlite::open(home_dir().join("ydav2024-data")) {
-        Ok(st)=> st,
-        Err(e) => {
-            let box_error = gtk::Box::builder().orientation(Horizontal).build();
-            let label = gtk::Label::new(Some(format!("Ошибка \"{}\" базы данных. \n Будет создана новая база. Подождите ... ", e).as_str()));
-            box_error.append(&label);
-            let window = ApplicationWindow::builder()
-                .application(app)
-                .title("Ydav-gtk")
-                .default_height(300)
-                .child(&box_error)
-                .icon_name("ru_dimon_ydav_2024")
-                .build();
-            window.set_widget_name("window");
-            load_css();
-            window.present();
-            let sql = include_str!("sql.in").to_string();
-            sql_execute(sql);
-            label.set_label("Создана новая база данный. Перезапустите программу.");
-            return;
-        }
-    };
-
+    let connection = sqlite::open(home_dir().join("ydav2024-data")).expect("Ошибка базы данных");
     let query = "SELECT name, phone FROM contact ORDER BY name ASC";
     let mut statement = match connection.prepare(query) {
         Ok(st)=> st,
@@ -211,7 +251,7 @@ fn build_ui(app: &Application) {
             load_css();
             window.present();
             let sql = include_str!("sql.in").to_string();
-            sql_execute(sql);
+            Config::sql_execute(sql);
             label.set_label("Создана новая база данный. Перезапустите программу.");
             return;
         }
@@ -266,7 +306,7 @@ fn build_ui(app: &Application) {
 
     });
     let column_time =ColumnViewColumn::new(Some("Время"), Some(factory_time));
-    let model_phone_object: gtk::gio::ListStore = gtk::gio::ListStore::new::<phone_object::PhoneObject>();
+    let model_phone_object: gio::ListStore = gio::ListStore::new::<phone_object::PhoneObject>();
     let selection_model = gtk::NoSelection::new(Some(model_phone_object.clone()));
     let column_view_phone = gtk::ColumnView::new(Some(selection_model));
     column_view_phone.append_column(&column_time);
@@ -314,7 +354,7 @@ fn build_ui(app: &Application) {
             .factorion(list_item,"body");
     });
     let column_sms_input_body =ColumnViewColumn::new(Some("СМС:"), Some(factory_sms_input_body));
-    let model_sms_input_object: gtk::gio::ListStore = gtk::gio::ListStore::new::<sms_input_object::SmsInputObject>();
+    let model_sms_input_object: gio::ListStore = gio::ListStore::new::<sms_input_object::SmsInputObject>();
     let no_selection_sms_input_model = gtk::NoSelection::new(Some(model_sms_input_object.clone()));
     let selection_sms_input_model = gtk::SingleSelection::new(Some(no_selection_sms_input_model));
     //**************Исходящие СМС***********************************************************
@@ -376,21 +416,27 @@ fn build_ui(app: &Application) {
 
     });
     let column_sms_output_delivery =ColumnViewColumn::new(Some("Статус отправки"), Some(factory_sms_output_delivery));
-    let model_sms_output_object: gtk::gio::ListStore = gtk::gio::ListStore::new::<sms_output_object::SmsOutputObject>();
+    let model_sms_output_object: gio::ListStore = gio::ListStore::new::<sms_output_object::SmsOutputObject>();
     let no_selection_sms_output_model = gtk::NoSelection::new(Some(model_sms_output_object.clone()));
     let selection_sms_output_model = gtk::SingleSelection::new(Some(no_selection_sms_output_model));
     let sender_sms_output = sender.clone();
-    let times_sms_output = times.clone();
-    let address_ip = edit_ip_address.text().to_string().clone();
-    selection_sms_output_model.connect_selection_changed(move |x, _i, _i1| {
-        let select_sms_output = x.item(x.selected())
+    let sel_sms_output_model = selection_sms_output_model.clone();
+    selection_sms_output_model.connect_selection_changed(clone!(
+        #[weak]
+        edit_ip_address,
+        #[weak]
+        times,
+       move |_x, _i, _i1| {
+        let select_sms_output =
+            sel_sms_output_model.selected_item()
             .and_downcast::<sms_output_object::SmsOutputObject>()
             .expect("The item has to be an `SmsOutputObject`.");
         let id = select_sms_output.property::<String>("id");
-        let sms_output = match  sms_output::SmsOutput::status(address_ip.clone(), id.as_str()){
+        let address = edit_ip_address.text().to_string();
+        let sms_output = match  sms_output::SmsOutput::status(address, id.as_str()){
             Ok(sms_output)=> sms_output,
             Err(error)=>{
-                times_sms_output.set_markup(format!("{}", error).as_str());
+                times.set_markup(format!("{}", error).as_str());
                 let sender = sender_sms_output.clone();
                 sender.send_blocking(true).unwrap();
                 return
@@ -407,11 +453,10 @@ fn build_ui(app: &Application) {
         select_sms_output.set_property("deliverytime", delivery_time.clone());
 
         let sql = format!("UPDATE sms_output SET sent='{}', sent_time='{}', delivery='{}', delivery_time='{}' WHERE _id={}", sent, sent_time, delivery, delivery_time, id);
-        sql_execute(sql);
+        Config::sql_execute(sql);
 
 
-
-    });
+    }));
     let column_view_sms_output = gtk::ColumnView::new(Some(selection_sms_output_model));
     column_view_sms_output.append_column(&column_sms_output_phone);
     column_view_sms_output.append_column(&column_sms_output_text);
@@ -504,7 +549,7 @@ fn build_ui(app: &Application) {
             .factorion(list_item,"log");
     });
     let column_log =ColumnViewColumn::new(Some("Лог:"), Some(factory_log));
-    let model_log: gtk::gio::ListStore = gtk::gio::ListStore::new::<log_object::LogObject>();
+    let model_log: gio::ListStore = gio::ListStore::new::<log_object::LogObject>();
     let no_selection_log = gtk::NoSelection::new(Some(model_log.clone()));
     let selection_log = gtk::SingleSelection::new(Some(no_selection_log));
 
@@ -631,10 +676,10 @@ fn build_ui(app: &Application) {
     flex_box_sms_output.append(&button_sms_output_send);
     let scrolled_sms_output=gtk::ScrolledWindow::builder()
         .child(&column_view_sms_output)
+        .height_request(100)
         .propagate_natural_width(true)
         .build();
     scrolled_sms_output.set_vexpand(true);
-    scrolled_sms_output.set_vexpand_set(true);
     flex_box_sms_output.append(&scrolled_sms_output);
     button_phone_get.set_css_classes(&["button"]);
     stack.set_css_classes(&["panel_win"]);
@@ -668,7 +713,8 @@ fn build_ui(app: &Application) {
     load_css();
     window.present();
 
-    let connection = sql_connection();
+
+    let connection = Config::sql_connection();
     let query = "SELECT id_na_android, phone, time, body FROM sms_input ORDER BY _id DESC ";
     let mut statement = connection.prepare(query).unwrap();
     while let Ok(State::Row) = statement.next() {
@@ -690,8 +736,8 @@ fn build_ui(app: &Application) {
     }
     let sender_sms_output = sender.clone();
     let times_sms_output = times.clone();
-    let address_ip = edit_ip_address.text().to_string().clone();
-    let connection = sql_connection();
+    let address_ip = edit_ip_address.clone();
+    let connection = Config::sql_connection();
     if let Ok(()) = connection.execute(query) {
         let mut statement = connection.prepare( " SELECT * FROM sms_output;").unwrap();
         if statement.iter().count() > 0 {
@@ -710,19 +756,20 @@ fn build_ui(app: &Application) {
     }
 
 
-    button_sms_output_send.connect_clicked(move |_| {
+    button_sms_output_send.connect_clicked(clone!(
+        #[weak]
+        edit_ip_address,
+        move |_| {
         let phone = edit_sms_output_phone.text().to_string();
         let text = buffer_sms_output_text.text(&buffer_sms_output_text.start_iter(), &buffer_sms_output_text.end_iter(), false).to_string();
-        //TODO отправка СМС
         let query = format!("INSERT INTO sms_output (phone, text, sent, sent_time, delivery, delivery_time) VALUES (\"{}\", \"{}\", \"none\", \"none\", \"none\", \"none\");", phone, text);
         let a = " SELECT  last_insert_rowid() AS _id FROM sms_output;";
-        let connection = sql_connection();
+        let connection = Config::sql_connection();
         if let Ok(()) = connection.execute(query) {
             let mut statement = connection.prepare(a).unwrap();
             if statement.iter().count() > 0 {
                 if let Ok(State::Row) = statement.next() {
                     let id = statement.read::<String, _>("_id").unwrap();
-                    //Получит текущие время и дату
                     let now = Local::now();
                     let time_str =  now.format("%Y-%m-%d %H:%M:%S").to_string();
                     let sms_output_object = sms_output_object::SmsOutputObject::new();
@@ -735,7 +782,8 @@ fn build_ui(app: &Application) {
                     sms_output_object.set_property("deliverytime", time_str);
                     model_sms_output_object.append(&sms_output_object);
                     let sms_output_param = SmsOutputParam { id, phone, text, };
-                    let sms_output = match  sms_output::SmsOutput::send(address_ip.clone(), sms_output_param){
+                    let address = edit_ip_address.text().to_string();
+                    let sms_output = match  sms_output::SmsOutput::send(address, sms_output_param){
                         Ok(phone)=>phone,
                         Err(error)=>{
                             times_sms_output.set_markup(format!("{}", error).as_str());
@@ -759,9 +807,20 @@ fn build_ui(app: &Application) {
             }
         }
 
-    });
+    }));
 
-
+    window.connect_close_request(clone!(
+        #[weak]
+        edit_ip_address,
+        #[upgrade_or]
+        Propagation::Proceed,
+        move |_x1| {
+        let mut config = Config::new();
+            let address = edit_ip_address.text().to_string();
+            config.param.insert("ip".to_string(), address);
+        config.save();
+        Propagation::Proceed
+    }));
 
     button_contact_csv.connect_clicked(move |_x1| {
         let file_filter = gtk::FileFilter::new();
@@ -771,7 +830,7 @@ fn build_ui(app: &Application) {
             .title("Файл для контактов")
             .default_filter(&file_filter)
             .build();
-        let cancellable =gtk::gio::Cancellable::new();
+        let cancellable =gio::Cancellable::new();
         let value_csv_model_contact = csv_model_contact.clone();
         save_dialog.save(Some(&window), Some(&cancellable), move |x2| {
             let path_file = match x2 {
@@ -817,21 +876,27 @@ fn build_ui(app: &Application) {
         ));
 
     let sender_info_phone = sender.clone();
-    let address_ip = edit_ip_address.text().to_string().clone();
-    let times_phone = times.clone();
-    let label_met = label_met_new_phone_input.clone();
-    button_phone_get.connect_clicked(move |_b| {
-        let phone = match Phone::connect(address_ip.clone()){
+    button_phone_get.connect_clicked(clone!(
+        #[weak]
+        edit_ip_address,
+        #[weak]
+        times,
+        #[weak]
+        label_met_new_phone_input,
+        move |_b| {
+        let address = edit_ip_address.text().to_string();
+
+        let phone = match Phone::connect(address){
             Ok(phone)=>phone,
             Err(error)=>{
-                times_phone.set_markup(format!("{}", error).as_str());
+                times.set_markup(format!("{}", error).as_str());
                 let sender = sender_info_phone.clone();
                 sender.send_blocking(true).unwrap();
                 return
             }
         };
-        times_phone.set_markup(format!("{}", phone.phones.time).as_str());
-        let connection = sql_connection();
+        times.set_markup(format!("{}", phone.phones.time).as_str());
+        let connection = Config::sql_connection();
         let mut sql ="BEGIN TRANSACTION;".to_string();
         for phone in &phone.phones.phone{
             let phone_object = phone_object::PhoneObject::new();
@@ -860,11 +925,11 @@ fn build_ui(app: &Application) {
             model_phone_object.append(&phone_object);
         }
         sql=sql+"COMMIT;";
-        sql_execute(sql);
+        Config::sql_execute(sql);
         let mut param_where_sql=String::new();
         let mut where_sql=String::new();
         let query = "SELECT _id, id_na_android FROM phone_input WHERE id_na_android>0";
-        let connection = sql_connection();
+        let connection = Config::sql_connection();
         let mut statement = connection.prepare(query).unwrap();
         if statement.iter().count()>0 {
             while let Ok(State::Row) = statement.next() {
@@ -877,31 +942,36 @@ fn build_ui(app: &Application) {
                 let id=statement.read::<String,_>("_id").unwrap();
                 where_sql.push_str(format!("_id={}", id).as_str());
             }
-
-            let phone_input_delete = phone_delete::PhoneDelete::connect(address_ip.clone(), &param_where_sql);
+            let address = edit_ip_address.text().to_string();
+            let phone_input_delete = phone_delete::PhoneDelete::connect(address, &param_where_sql);
             if let Ok(_sid)= phone_input_delete {
                 let sql = format!("UPDATE phone_input SET id_na_android=0 WHERE {}", where_sql);
-                sql_execute(sql);
-                label_met.set_visible(false);
+                Config::sql_execute(sql);
+                label_met_new_phone_input.set_visible(false);
             }
         }
-    });
+    }));
 
     let sender_info_contact = sender.clone();
-    let times_contact = times.clone();
-    let address_ip = edit_ip_address.text().to_string().clone();
-    let label_met = label_met_new_sms_input.clone();
-    button_contact_get.connect_clicked(move |_b|{
-        let contact = match Contact::connect(address_ip.clone()){
+    button_contact_get.connect_clicked(clone!(
+        #[weak]
+        edit_ip_address,
+        #[weak]
+        times,
+        #[weak]
+        label_met_new_sms_input,
+        move |_b|{
+        let address = edit_ip_address.text().to_string();
+        let contact = match Contact::connect(address){
             Ok(contact)=> contact,
             Err(error)=>{
-                times_contact.set_markup(format!("{}", error).as_str());
+                times.set_markup(format!("{}", error).as_str());
                 let sender = sender_info_contact.clone();
                 sender.send_blocking(true).unwrap();
                 return
             }
         };
-        times_contact.set_markup(format!("{}", contact.contacts.time).as_str());
+        times.set_markup(format!("{}", contact.contacts.time).as_str());
         let mut sql =" DELETE FROM contact;
         UPDATE sqlite_sequence SET seq=0 WHERE name='contact'; BEGIN TRANSACTION;".to_string();
         for contact in &contact.contacts.contact{
@@ -916,25 +986,31 @@ fn build_ui(app: &Application) {
         }
         sql=sql+"COMMIT;";
         label_count_contact.set_markup(format!(" У Вас контактов <b>{}</b>.", &contact.contacts.contact.len()).as_str());
-        sql_execute(sql);
-    });
+        Config::sql_execute(sql);
+    }));
 
     let sender_info_sms_input = sender.clone();
-    let times_sms_input = times.clone();
-    let address_ip_sms_input = edit_ip_address.text().to_string().clone();
-    button_sms_input_get.connect_clicked(move |b|{
+    button_sms_input_get.connect_clicked(clone!(
+        #[weak]
+        edit_ip_address,
+        #[weak]
+        times,
+        #[weak]
+        label_met_new_sms_input,
+        move |b|{
         b.set_sensitive(false);
-        let sms_input = match SmsInput::connect(address_ip_sms_input.clone()){
+        let address = edit_ip_address.text().to_string();
+        let sms_input = match SmsInput::connect(address){
             Ok(sms_input)=> sms_input,
             Err(error)=>{
-                times_sms_input.set_markup(format!("{}", error).as_str());
+                times.set_markup(format!("{}", error).as_str());
                 let sender = sender_info_sms_input.clone();
                 sender.send_blocking(true).unwrap();
                 return
             }
         };
 
-        times_sms_input.set_markup(format!("{}", sms_input.sms_input.time).as_str());
+        times.set_markup(format!("{}", sms_input.sms_input.time).as_str());
         let mut sql ="BEGIN TRANSACTION;".to_string();
         for sms in &sms_input.sms_input.sms{
             let sms_input_object = sms_input_object::SmsInputObject::new();
@@ -946,11 +1022,11 @@ fn build_ui(app: &Application) {
             sql=sql+format!("INSERT INTO sms_input (id_na_android, phone, time, body) VALUES (\"{}\", \"{}\", \"{}\", \"{}\");", sms.id, sms.phone, sms.time, sms.body).as_str();
         }
         sql=sql+"COMMIT;";
-        sql_execute(sql);
+        Config::sql_execute(sql);
         let mut param_where_sql=String::new();
         let mut where_sql=String::new();
         let query = "SELECT _id, id_na_android FROM sms_input WHERE id_na_android>0";
-        let connection = sql_connection();
+        let connection = Config::sql_connection();
         let mut statement = connection.prepare(query).unwrap();
         if statement.iter().count()>0 {
             while let Ok(State::Row) = statement.next() {
@@ -964,25 +1040,35 @@ fn build_ui(app: &Application) {
                 where_sql.push_str(format!("_id={}", id).as_str());
             }
 
-            let sms_input_delete = sms_input_delete::SmsInputDelete::connect(address_ip_sms_input.clone(),&param_where_sql);
+            let sms_input_delete = sms_input_delete::SmsInputDelete::connect(address_ip.text().to_string().clone(),&param_where_sql);
             if let Ok(_sid)=sms_input_delete{
                 let sql = format!("UPDATE sms_input SET id_na_android=0 WHERE {}", where_sql);
-                sql_execute(sql);
-                label_met.set_visible(false);
+                Config::sql_execute(sql);
+                label_met_new_sms_input.set_visible(false);
             }
         }
 
-    });
+    }));
 
-    let check_log_monotoring = check_log.clone();
     let sender_info= sender.clone();
-    let address = edit_ip_address.text().to_string().clone();
-    let times_log= times.clone();
-    let label_met = label_met_new_sms_input.clone();
-    let button_input_sms = button_sms_input_get.clone();
-    let label_mata_phone = label_met_new_phone_input.clone();
-    let regular_monitoring_info= move ||{
-        let log= match Info::connect(address.clone()) {
+    let regular_monitoring_info= clone!(
+        #[weak]
+        check_log,
+        #[weak]
+        edit_ip_address,
+        #[weak]
+        times,
+        #[weak]
+        label_met_new_sms_input,
+        #[weak]
+        button_sms_input_get,
+        #[weak]
+        label_met_new_phone_input,
+        #[upgrade_or]
+        ControlFlow::Break,
+        move ||{
+        let address = edit_ip_address.text().to_string();
+        let log= match Info::connect(address) {
             Ok(info)=>{
                 gtk_box_horizontal.set_visible(true);
                 gtk_box_horizontal2.set_visible(true);
@@ -991,7 +1077,7 @@ fn build_ui(app: &Application) {
             Err(error)=>{
                 gtk_box_horizontal.set_visible(false);
                 gtk_box_horizontal2.set_visible(false);
-                times_log.set_markup(format!("{}", error).as_str());
+                times.set_markup(format!("{}", error).as_str());
                 let sender = sender_info.clone();
                 sender.send_blocking(true).unwrap();
                 return ControlFlow::Break
@@ -1008,21 +1094,21 @@ fn build_ui(app: &Application) {
         label_rsrq.set_markup(format!("RSRQ: {} dB", log.info.signal.rsrq).as_str());
         label_rsrp.set_markup(format!("RSRP: {} dBm", log.info.signal.rsrp).as_str());
         label_rssi.set_markup(format!("RSSI: {}", log.info.signal.rssi).as_str());
-        times_log.set_markup(format!("🕰{} СМС:{}", log.info.time, log.info.sms).as_str());
-        if check_log_monotoring.is_active() {
+        times.set_markup(format!("🕰{} СМС:{}", log.info.time, log.info.sms).as_str());
+        if check_log.is_active() {
             let log_object = log_object::LogObject::new();
             log_object.set_property("log", format!("Лог:{}", log.json).as_str());
             model_log.append(&log_object)
         }
 
         if log.info.sms>0{
-            label_met.set_visible(true);
-            button_input_sms.set_sensitive(true);
-            times_log.set_markup(format!("🕰{} СМС:{}", log.info.time, log.info.sms).as_str());
+            label_met_new_sms_input.set_visible(true);
+            button_sms_input_get.set_sensitive(true);
+            times.set_markup(format!("🕰{} СМС:{}", log.info.time, log.info.sms).as_str());
         }
 
         if log.info.phone>0{
-            label_mata_phone.set_visible(true);
+            label_met_new_phone_input.set_visible(true);
         }
 
         let flag_regular_monitoring_info =edit_ip_address.get_visible();
@@ -1034,7 +1120,7 @@ fn build_ui(app: &Application) {
         ControlFlow::Break
 
 
-    };
+    });
     let sender_1 = sender.clone();
     button_stop_info.connect_clicked(move|button_stop_info|{
         let sender = sender_1.clone();
@@ -1052,6 +1138,7 @@ fn build_ui(app: &Application) {
             sender.send_blocking(true).unwrap();
         }
     });
+
 }
 fn load_css() {
     let display = gdk::Display::default().expect("Could not get default display.");
@@ -1083,30 +1170,32 @@ fn add_panel_is_item(list_item: &Object){
         .set_child(Some(&panel));
 }
 
-fn sql_execute(sql: String){
-    let connection = sql_connection();
-    if let Err(e)=connection.execute(&sql){
-        println!("Ошибка {} тут {}", e, sql);
-    }
-}
 
-fn sql_connection()->Connection{
-    let home =  home_dir().join("ydav2024-data");
-    sqlite::open(&home).expect(format!("не смог открыть базу данных {:?}", &home).as_str())
-}
 
 fn find_phone(phone: String, connection: &Connection)->String {
-    let mut statement = connection.prepare(format!("SELECT name FROM contact WHERE phone LIKE '%{}%' ", phone.clone()).as_str()).unwrap();
-    if statement.iter().count() > 0 {
-        while let Ok(State::Row) = statement.next() {
-            return statement.read::<String, _>("name").unwrap()
-        }
+    let statement = connection.prepare(format!("SELECT name FROM contact WHERE phone LIKE '%{}%' ", phone.clone()).as_str()).unwrap();
+    if let Ok(s) = find_phone_name(statement){
+        return s
     }
-    let mut statement = connection.prepare(format!("SELECT name FROM contact WHERE phone LIKE '%{}%' ", phone[1..].to_string()).as_str()).unwrap();
-    if statement.iter().count() > 0 {
-        while let Ok(State::Row) = statement.next() {
-            return statement.read::<String, _>("name").unwrap()
-        }
+    let statement = connection.prepare(format!("SELECT name FROM contact WHERE phone LIKE '%{}%' ", phone[1..].to_string()).as_str()).unwrap();
+    if let Ok(s) = find_phone_name(statement){
+        return s
     }
+
     "".to_string()
+}
+
+fn find_phone_name(mut statement: Statement) -> Result<String, sqlite::Error>
+{
+    let mut s="".to_string();
+    if statement.iter().count() > 0 {
+        while let Ok(State::Row) = statement.next() {
+            s = match statement.read::<String, _>("name"){
+                Ok(s)=> s,
+                Err(e) => return Err(e)
+            }
+        }
+    }
+    Ok(s)
+
 }

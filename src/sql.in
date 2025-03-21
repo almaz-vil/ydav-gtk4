@@ -1,4 +1,12 @@
 BEGIN TRANSACTION;
+CREATE TABLE IF NOT EXISTS "config" (
+"_id"	INTEGER,
+"name"	TEXT,
+"value"	TEXT,
+PRIMARY KEY("_id" AUTOINCREMENT)
+);
+INSERT INTO config (name, value) VALUES ("ip","127.0.0.14:38300");
+INSERT INTO config (name, value) VALUES ("politic","");
 CREATE TABLE IF NOT EXISTS "contact" (
 "_id"	INTEGER,
 "name"	TEXT,

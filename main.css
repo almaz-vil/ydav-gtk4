@@ -19,6 +19,11 @@
     padding-right: .4em;
   }
 
+  #button_politic{
+    background-image: none;
+    background-color: black;
+    color: white;
+  }
   #statusbar{
     background-color: black;
     color: white;
