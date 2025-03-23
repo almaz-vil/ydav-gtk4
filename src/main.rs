@@ -56,6 +56,9 @@ fn build_ui(app: &Application) {
     icon_theme.add_resource_path("ru/Dimon/Ydav-gtk/icons");
     let (sender, receiver) = async_channel::bounded(1);
     let class_info=["info"];
+    // Буфер обмена ОС
+    let display = gdk::Display::default().unwrap();
+    let clipboard = display.clipboard();
     let gtk_box_horizontal =gtk::Box::builder()
             .orientation(Horizontal)
             .halign(Align::Fill)
@@ -164,7 +167,6 @@ fn build_ui(app: &Application) {
         let sql = include_str!("politic.in").to_string();
         text_politic.set_text(sql.as_str());
         let button_close = gtk::Button::with_label("Ознакомлен");
-
         let gtk_box_politic = gtk::Box::builder()
             .orientation(Vertical)
             .build();
@@ -178,13 +180,15 @@ fn build_ui(app: &Application) {
             .child(&gtk_box_politic)
             .icon_name("ru_dimon_ydav_2024")
             .build();
-        let win = window.clone();
-        button_close.connect_clicked(move |_x1| {
+        button_close.connect_clicked(clone!(
+            #[weak]
+            window,
+            move |_x1| {
             let mut config = Config::new();
             config.param.insert("politic".to_string(), "1".to_string());
             config.save();
-            win.close();
-        });
+            window.close();
+        }));
         window.present();
 
     });
@@ -194,6 +198,67 @@ fn build_ui(app: &Application) {
     panel_box_politic.append(&label_politic);
     panel_box_politic.append(&button_politic);
     gtk_box_g.append(&panel_box_politic);
+    let button_about = gtk::Button::with_label("О программе");
+    button_about.set_css_classes(&["button_politic"]);
+    button_about.connect_clicked(clone!(
+            #[weak]
+            clipboard,
+            move |_x1| {
+        let text_politic =gtk::TextBuffer::new(None);
+        let textview =gtk::TextView::with_buffer(&text_politic);
+        textview.set_wrap_mode(WrapMode::Word);
+        textview.set_buffer(Some(&text_politic));
+        let scrolled_politic =gtk::ScrolledWindow::builder()
+            .child(&textview)
+            .propagate_natural_width(true)
+            .build();
+        scrolled_politic.set_vexpand(true);
+        scrolled_politic.set_vexpand_set(true);
+        text_politic.set_text("Программа клиент Ydav-gtk4 для сервера Ydav2024 for Android версия: 1.1.0");
+        let button_git = gtk::Button::with_label("https://ydav-android.p-k-53.ru/");
+        button_git.set_tooltip_text(Some("Нажмите для копирования адреса в буфер обмена"));
+        button_git.connect_clicked(clone!(
+            #[weak]
+            clipboard,
+            move |b|{
+                clipboard.set_text(b.label().unwrap().as_str());
+            }
+        ));
+        let button_www = gtk::Button::with_label("https://github.com/almaz-vil/ydav-gtk4.git");
+        button_www.set_tooltip_text(Some("Нажмите для копирования адреса в буфер обмена"));
+        button_www.connect_clicked(clone!(
+            #[weak]
+            clipboard,
+            move |b|{
+                clipboard.set_text(b.label().unwrap().as_str());
+            }
+        ));
+        let button_close = gtk::Button::with_label("Хорошо");
+
+        let gtk_box_politic = gtk::Box::builder()
+            .orientation(Vertical)
+            .build();
+        gtk_box_politic.append(&button_git);
+        gtk_box_politic.append(&button_www);
+        gtk_box_politic.append(&scrolled_politic);
+
+        gtk_box_politic.append(&button_close);
+
+        let window = gtk::Window::builder()
+            .title("Ydav-gtk")
+            .height_request(320)
+            .width_request(360)
+            .child(&gtk_box_politic)
+            .icon_name("ru_dimon_ydav_2024")
+            .build();
+        let win = window.clone();
+        button_close.connect_clicked(move |_x1| {
+            win.close();
+        });
+        window.present();
+
+    }));
+    gtk_box_g.append(&button_about);
     gtk_box_g.set_homogeneous(false);
     gtk_box_g.set_css_classes(&["panel_win"]);
     gtk_box_horizontal.set_visible(false);
@@ -471,12 +536,12 @@ fn build_ui(app: &Application) {
         .orientation(Horizontal)
         .build();
     let dop_panel_for_button_body_input_sms = dop_panel_for_button_body_input_smst.clone();
-    // Буфер обмена ОС
-    let display = gdk::Display::default().unwrap();
-    let clipboard = display.clipboard();
-    //Строка для поиска ссылок и цифр в тексте СМС
+       //Строка для поиска ссылок и цифр в тексте СМС
     let semver_sms_input = regex::Regex::new(r"(\d+)|([-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*))").expect("Ошибка парсера входящих СМС");
-    selection_sms_input_model.connect_selection_changed(move|x, _i, _i1| {
+    selection_sms_input_model.connect_selection_changed(clone!(
+            #[weak]
+            clipboard,
+            move|x, _i, _i1| {
         let select_sms_input=x.item(x.selected())
             .and_downcast::<sms_input_object::SmsInputObject>()
             .expect("The item has to be an `SmsinputObject`.");
@@ -496,10 +561,12 @@ fn build_ui(app: &Application) {
                 button_one=Some(button.clone());
             };
             button.set_css_classes(&["button"]);
-            let clipboardt=clipboard.clone();
             let panel = button_one.clone();
-            button.connect_clicked(move|b|{
-                clipboardt.set_text(b.label().unwrap().as_str());
+            button.connect_clicked(clone!(
+            #[weak]
+            clipboard,
+            move|b|{
+                clipboard.set_text(b.label().unwrap().as_str());
                 if let Some(u) = &panel{
                     u.set_widget_name("");
                     u.set_css_classes(&["button"]);
@@ -511,10 +578,10 @@ fn build_ui(app: &Application) {
                     }
                 }
                 b.set_widget_name("button");
-            });
+            }));
             dop_panel_for_button_body_input_sms.append(&button);
         }) ;
-    });
+    }));
     let column_view_sms_input = gtk::ColumnView::new(Some(selection_sms_input_model));
     column_view_sms_input.append_column(&column_sms_input_time);
     column_view_sms_input.append_column(&column_sms_input_phone);
@@ -639,7 +706,7 @@ fn build_ui(app: &Application) {
 
     let flex_box_sms_output = gtk::Box::builder()
         .orientation(Vertical).build();
-    let flex_box_sms_output_boxh =gtk::Box::builder()
+    let flex_box_sms_output_box_horizontal =gtk::Box::builder()
         .orientation(Horizontal).build();
     let label = gtk::Label::new(Some("Выбор номера телефона"));
     let exp = gtk::PropertyExpression::new(
@@ -655,10 +722,10 @@ fn build_ui(app: &Application) {
        let sel = binding.downcast_ref::<contact_object::ContactObject>().unwrap();
        edit_phone.set_text(sel.property::<String>("phone").as_str());
    });
-    flex_box_sms_output_boxh.append(&label);
-    flex_box_sms_output_boxh.append(&edit_sms_output_phone);
-    flex_box_sms_output_boxh.append(&combo_box_phone);
-    flex_box_sms_output.append(&flex_box_sms_output_boxh);
+    flex_box_sms_output_box_horizontal.append(&label);
+    flex_box_sms_output_box_horizontal.append(&edit_sms_output_phone);
+    flex_box_sms_output_box_horizontal.append(&combo_box_phone);
+    flex_box_sms_output.append(&flex_box_sms_output_box_horizontal);
     let label = gtk::Label::new(Some("СМС (текст)"));
     let edit_sms_output_text = gtk::TextView::builder()
         .height_request(100).build();
@@ -844,9 +911,9 @@ fn build_ui(app: &Application) {
                 if let Ok(item) = object {
                     let data = item.downcast_ref::<contact_object::ContactObject>()
                         .expect("Item not ContactObject");
-                    let phohe =data.property::<String>("phone");
+                    let phone =data.property::<String>("phone");
                     let name =data.property::<String>("name");
-                    if let Err(e)= writer.write_all(format!("{}, {}", name, phohe).as_bytes()){
+                    if let Err(e)= writer.write_all(format!("{}, {}", name, phone).as_bytes()){
                         println!("{}",e);
                     }
                 }
