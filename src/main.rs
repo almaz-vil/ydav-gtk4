@@ -101,15 +101,19 @@ fn build_ui(app: &Application) {
     gtk_box_horizontal2.append(&label_sim_operator_name);
     gtk_box_horizontal2.append(&label_sim_operator);
     gtk_box_horizontal2.append(&label_sim_county_iso);
-    let label_rsrp = gtk::Label::new(Some("_"));
-    label_rsrp.set_css_classes(&class_info);
-    gtk_box_horizontal2.append(&label_rsrp);
-    let label_rsrq = gtk::Label::new(Some("_"));
-    label_rsrq.set_css_classes(&class_info);
-    gtk_box_horizontal2.append(&label_rsrq);
-    let label_rssi = gtk::Label::new(Some("_"));
-    label_rssi.set_css_classes(&class_info);
-    gtk_box_horizontal2.append(&label_rssi);
+
+    let text_signal_param =gtk::TextBuffer::new(None);
+    let textview =gtk::TextView::with_buffer(&text_signal_param);
+    textview.set_widget_name("text_signal_param");
+    textview.set_wrap_mode(WrapMode::Word);
+    textview.set_buffer(Some(&text_signal_param));
+    let scrolled_signal_param =gtk::ScrolledWindow::builder()
+        .child(&textview)
+        .propagate_natural_width(true)
+        .build();
+    scrolled_signal_param.set_vexpand(true);
+    scrolled_signal_param.set_vexpand_set(true);
+
     let edit_ip_address = gtk::Entry::new();
     let ip = config.param.entry("ip".to_string()).or_insert_with(||{"192.168.1.91:38300".to_string()});
     edit_ip_address.set_text(ip);
@@ -141,8 +145,6 @@ fn build_ui(app: &Application) {
     label_met_new_sms_input.set_visible(false);
     gtk_box_g.append(&label_met_new_sms_input);
 
-    gtk_box_g.append(&gtk_box_horizontal);
-    gtk_box_g.append(&gtk_box_horizontal2);
     gtk_box_g.append(&edit_ip_address);
     let label_politic = gtk::Label::new(Some("Продолжая использовать программу Вы соглашаетесь с "));
     let button_politic = gtk::Button::with_label("Политикой конфиденциальности");
@@ -152,6 +154,7 @@ fn build_ui(app: &Application) {
         button_politic.set_visible(false);
     }
     button_politic.set_css_classes(&["button_politic"]);
+
     button_politic.connect_clicked(move |_x1| {
         let text_politic =gtk::TextBuffer::new(None);
         let textview =gtk::TextView::with_buffer(&text_politic);
@@ -261,6 +264,10 @@ fn build_ui(app: &Application) {
     gtk_box_g.append(&button_about);
     gtk_box_g.set_homogeneous(false);
     gtk_box_g.set_css_classes(&["panel_win"]);
+    gtk_box_g.append(&gtk_box_horizontal);
+    gtk_box_g.append(&gtk_box_horizontal2);
+    gtk_box_g.append(&scrolled_signal_param);
+
     gtk_box_horizontal.set_visible(false);
     gtk_box_horizontal2.set_visible(false);
     let edit_sms_output_phone = gtk::Entry::new();
@@ -1158,9 +1165,7 @@ fn build_ui(app: &Application) {
         label_sim_operator_name.set_markup(format!("{}", log.info.signal.sim_operator_name).as_str());
         label_sim_operator.set_markup(format!("{}",log.info.signal.sim_operator).as_str());
         label_sim_county_iso.set_markup(format!("{}",log.info.signal.sim_county_iso).as_str());
-        label_rsrq.set_markup(format!("RSRQ: {} dB", log.info.signal.rsrq).as_str());
-        label_rsrp.set_markup(format!("RSRP: {} dBm", log.info.signal.rsrp).as_str());
-        label_rssi.set_markup(format!("RSSI: {}", log.info.signal.rssi).as_str());
+        text_signal_param.set_text(format!("{}", log.info.signal.signal_param).as_str());
         times.set_markup(format!("🕰{} СМС:{}", log.info.time, log.info.sms).as_str());
         if check_log.is_active() {
             let log_object = log_object::LogObject::new();

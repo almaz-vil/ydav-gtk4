@@ -23,6 +23,11 @@
     padding-right: .4em;
   }
 
+#text_signal_param{
+  background-color:black;
+  color: white;
+}
+
   #statusbar{
     background-color: black;
     color: white;

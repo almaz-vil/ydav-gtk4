@@ -5,9 +5,7 @@ use crate::send_command_android::CommandSend;
 #[derive(Serialize, Deserialize, Default)]
 ///Информация о параметрах активной мобильной связи
 pub struct Signal{
-    pub rsrp: i64,
-    pub rsrq: i64,
-    pub rssi: i64,
+    pub signal_param: String,
     pub network_type: String,
     pub sim_county_iso: String,
     pub sim_operator: String,
