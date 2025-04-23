@@ -9,6 +9,8 @@ pub enum CommandSend{
     DelPhone,
     SmsOutput,
     SmsOutputStatus,
+    UssdSend,
+    UssdRespond,
 }
 
 #[derive(Serialize)]
@@ -37,6 +39,10 @@ impl CommandSend {
                 Command{ command: "SMS_OUTPUT".to_string(), param: param.to_string()}.json()}
             CommandSend::SmsOutputStatus => {
                 Command{ command: "SMS_OUTPUT_STATUS".to_string(), param: param.to_string()}.json()}
+            CommandSend::UssdSend => {
+                Command{ command: "USSD_SEND".to_string(), param: param.to_string()}.json()}
+            CommandSend::UssdRespond => {
+                Command{ command: "USSD_RESPOND".to_string(), param: param.to_string()}.json()}
         };
        c.push_str("\n");
         c

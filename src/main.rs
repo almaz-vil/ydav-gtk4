@@ -14,7 +14,9 @@ mod phone_delete;
 mod sms_output_object;
 mod sms_output;
 mod config;
+mod ussd;
 
+use crate::ussd::Ussd;
 use crate::config::Config;
 use crate::contact::Contact;
 use crate::info::{Info, Level};
@@ -177,7 +179,7 @@ fn build_ui(app: &Application) {
         gtk_box_politic.append(&button_close);
 
         let window = gtk::Window::builder()
-            .title("Ydav-gtk")
+            .title("Ydav-gtk v1.2.0")
             .height_request(320)
             .width_request(360)
             .child(&gtk_box_politic)
@@ -217,7 +219,7 @@ fn build_ui(app: &Application) {
             .build();
         scrolled_politic.set_vexpand(true);
         scrolled_politic.set_vexpand_set(true);
-        text_politic.set_text("Программа клиент Ydav-gtk4 для сервера Ydav2024 for Android версия: 1.1.0");
+        text_politic.set_text("Программа клиент Ydav-gtk4 для сервера Ydav2024 for Android версия: 1.2.0");
         let button_git = gtk::Button::with_label("https://ydav-android.p-k-53.ru/");
         button_git.set_tooltip_text(Some("Нажмите для копирования адреса в буфер обмена"));
         button_git.connect_clicked(clone!(
@@ -756,12 +758,39 @@ fn build_ui(app: &Application) {
     scrolled_sms_output.set_vexpand(true);
     flex_box_sms_output.append(&scrolled_sms_output);
     button_phone_get.set_css_classes(&["button"]);
+    let edit_ussd_command = gtk::Entry::new();
+    let button_send_ussd_command = gtk::Button::with_label("Отправить USSD команду");
+    let box_send_ussd = gtk::Box::builder()
+        .orientation(Horizontal)
+        .build();
+    box_send_ussd.append(&edit_ussd_command);
+    box_send_ussd.append(&button_send_ussd_command);
+    let button_result_ussd_command = gtk::Button::with_label("Чтения результата USSD команды");
+    let text_result_ussd =gtk::TextBuffer::new(None);
+    let textview =gtk::TextView::with_buffer(&text_result_ussd);
+    textview.set_widget_name("text_signal_param");
+    textview.set_wrap_mode(WrapMode::Word);
+    textview.set_buffer(Some(&text_result_ussd));
+    let scrolled_result_ussd=gtk::ScrolledWindow::builder()
+        .child(&textview)
+        .height_request(100)
+        .propagate_natural_width(true)
+        .build();
+    scrolled_result_ussd.set_vexpand(true);
+    scrolled_result_ussd.set_vexpand_set(true);
+    let flex_box_ussd_command =gtk::Box::builder()
+        .orientation(Vertical).build();
+    flex_box_ussd_command.append(&box_send_ussd);
+    flex_box_ussd_command.append(&button_result_ussd_command);
+    flex_box_ussd_command.append(&scrolled_result_ussd);
+
     stack.set_css_classes(&["panel_win"]);
     stack.add_titled(&gtk_box_g, Some("Signal"),"Сигнал и батарейка");
     stack.add_titled(&flex_box_list_phone, Some("Phone"), "✆Входящие звонки");
     stack.add_titled(&flex_box_contact,Some("Contact"),"Контакты");
     stack.add_titled(&flex_box_sms_input,Some("InputSMS"),"Входящие СМС");
     stack.add_titled(&flex_box_sms_output,Some("OutputSMS"),"СМС");
+    stack.add_titled(&flex_box_ussd_command,Some("USSD"),"USSD");
     stack.add_titled(&flex_box_log,Some("Logs"),"✎Лог");
     let stack_switcher = gtk::StackSwitcher::builder()
         .stack(&stack)
@@ -779,7 +808,7 @@ fn build_ui(app: &Application) {
     gtk_box_stack.append(&status);
     let window = ApplicationWindow::builder()
         .application(app)
-        .title("Ydav-gtk")
+        .title("Ydav-gtk v.1.2.0")
         .child(&gtk_box_stack)
         .icon_name("ru_dimon_ydav_2024")
         .build();
@@ -1026,14 +1055,69 @@ fn build_ui(app: &Application) {
         }
     }));
 
+    let sender_info_ussd = sender.clone();
+    button_send_ussd_command.connect_clicked(clone!(
+        #[weak]
+        edit_ip_address,
+        #[weak]
+        edit_ussd_command,
+        #[weak]
+        text_result_ussd,
+        #[weak]
+        times,
+        move |_b|{
+            let address = edit_ip_address.text().to_string();
+            let ussd_command = edit_ussd_command.text().to_string();
+            let ussd = match Ussd::send(address, ussd_command){
+                Ok(ussd)=> ussd,
+                Err(error)=>{
+                    times.set_markup(format!("{}", error).as_str());
+                    let sender = sender_info_ussd.clone();
+                    sender.send_blocking(true).unwrap();
+                    return
+                }
+            };
+            let mut error = ussd.ussd.failure;
+            if error.len()<1{
+                error = ussd.ussd.response;
+            }
+            text_result_ussd.set_text(error.as_str());
+        }
+    ));
+
+    let sender_info_ussd_result = sender.clone();
+    button_result_ussd_command.connect_clicked(clone!(
+        #[weak]
+        edit_ip_address,
+        #[weak]
+        times,
+        #[weak]
+        text_result_ussd,
+        move |_b|{
+            let address = edit_ip_address.text().to_string();
+            let ussd = match Ussd::response(address){
+                Ok(ussd)=> ussd,
+                Err(error)=>{
+                    times.set_markup(format!("{}", error).as_str());
+                    let sender = sender_info_ussd_result.clone();
+                    sender.send_blocking(true).unwrap();
+                    return
+                }
+            };
+            let mut error = ussd.ussd.failure;
+            if error.len()<1{
+                error = ussd.ussd.response;
+            }
+            text_result_ussd.set_text(error.as_str());
+        }
+    ));
+
     let sender_info_contact = sender.clone();
     button_contact_get.connect_clicked(clone!(
         #[weak]
         edit_ip_address,
         #[weak]
         times,
-        #[weak]
-        label_met_new_sms_input,
         move |_b|{
         let address = edit_ip_address.text().to_string();
         let contact = match Contact::connect(address){
