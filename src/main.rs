@@ -219,7 +219,7 @@ fn build_ui(app: &Application) {
             .build();
         scrolled_politic.set_vexpand(true);
         scrolled_politic.set_vexpand_set(true);
-        text_politic.set_text("Программа клиент Ydav-gtk4 для сервера Ydav2024 for Android версия: 1.2.0");
+        text_politic.set_text("Программа клиент Ydav-gtk4 для сервера Ydav2024 for Android версия: 1.3.0");
         let button_git = gtk::Button::with_label("https://ydav-android.p-k-53.ru/");
         button_git.set_tooltip_text(Some("Нажмите для копирования адреса в буфер обмена"));
         button_git.connect_clicked(clone!(
@@ -759,6 +759,7 @@ fn build_ui(app: &Application) {
     flex_box_sms_output.append(&scrolled_sms_output);
     button_phone_get.set_css_classes(&["button"]);
     let edit_ussd_command = gtk::Entry::new();
+    edit_ussd_command.set_text("*100#");
     let button_send_ussd_command = gtk::Button::with_label("Отправить USSD команду");
     let box_send_ussd = gtk::Box::builder()
         .orientation(Horizontal)
@@ -783,7 +784,6 @@ fn build_ui(app: &Application) {
     flex_box_ussd_command.append(&box_send_ussd);
     flex_box_ussd_command.append(&button_result_ussd_command);
     flex_box_ussd_command.append(&scrolled_result_ussd);
-
     stack.set_css_classes(&["panel_win"]);
     stack.add_titled(&gtk_box_g, Some("Signal"),"Сигнал и батарейка");
     stack.add_titled(&flex_box_list_phone, Some("Phone"), "✆Входящие звонки");
@@ -808,7 +808,7 @@ fn build_ui(app: &Application) {
     gtk_box_stack.append(&status);
     let window = ApplicationWindow::builder()
         .application(app)
-        .title("Ydav-gtk v.1.2.0")
+        .title("Ydav-gtk v.1.3.0")
         .child(&gtk_box_stack)
         .icon_name("ru_dimon_ydav_2024")
         .build();
@@ -1077,11 +1077,9 @@ fn build_ui(app: &Application) {
                     return
                 }
             };
-            let mut error = ussd.ussd.failure;
-            if error.len()<1{
-                error = ussd.ussd.response;
-            }
-            text_result_ussd.set_text(error.as_str());
+            let error = ussd.ussd.ussd.failure;
+            let response = ussd.ussd.ussd.response;
+            text_result_ussd.set_text(format!("{} {}", error, response).as_str());
         }
     ));
 
@@ -1104,11 +1102,9 @@ fn build_ui(app: &Application) {
                     return
                 }
             };
-            let mut error = ussd.ussd.failure;
-            if error.len()<1{
-                error = ussd.ussd.response;
-            }
-            text_result_ussd.set_text(error.as_str());
+            let error = ussd.ussd.ussd.failure;
+            let response = ussd.ussd.ussd.response;
+            text_result_ussd.set_text(format!("{} {}", error, response).as_str());
         }
     ));
 

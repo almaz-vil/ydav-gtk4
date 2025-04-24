@@ -2,9 +2,14 @@ use crate::read_json_android::ReadJsonAndroid;
 use crate::send_command_android::CommandSend;
 use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Default)]
-pub struct Ussd {
+pub struct UssdR {
     pub failure: String,
     pub response: String
+}
+#[derive(Serialize, Deserialize, Default)]
+pub struct Ussd {
+    pub time: String,
+    pub ussd: UssdR
 }
 #[derive(Default)]
 pub struct UssdLog {

@@ -6,8 +6,8 @@ build = "build.rs"
 
 
 [dependencies]
-gtk4= { version = "0.9.5", features = ["v4_12"] }
-gdk4="0.9.5"
+gtk4= { version = "0.9.6", features = ["v4_12"] }
+gdk4="0.9.6"
 serde_json="*"
 serde = { version = "*", features = ["derive"] }
 async-channel = "2.3.1"
