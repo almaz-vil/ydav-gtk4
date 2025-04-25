@@ -61,10 +61,10 @@ fn build_ui(app: &Application) {
     // Буфер обмена ОС
     let display = gdk::Display::default().unwrap();
     let clipboard = display.clipboard();
-    let gtk_box_horizontal =gtk::Box::builder()
-            .orientation(Horizontal)
-            .halign(Align::Fill)
-            .build();
+    let flex_box_battery =gtk::Box::builder()
+        .orientation(Horizontal)
+        .halign(Align::Fill)
+        .build();
     let label_battery_level = gtk::Label::new(Some("_"));
     label_battery_level.set_css_classes(&class_info);
     label_battery_level.set_tooltip_text(Some("Уровень заряда аккумулятора"));
@@ -89,20 +89,20 @@ fn build_ui(app: &Application) {
     let label_sim_operator_name = gtk::Label::new(Some("_"));
     label_sim_operator_name.set_css_classes(&class_info);
     label_sim_operator_name.set_tooltip_text(Some("Оператор СИМ"));
-    gtk_box_horizontal.append(&label_battery_charge);
-    gtk_box_horizontal.append(&label_battery_level);
-    gtk_box_horizontal.append(&label_battery_temperature);
-    gtk_box_horizontal.append(&label_battery_status);
-    let gtk_box_horizontal2 =gtk::Box::builder()
+    flex_box_battery.append(&label_battery_charge);
+    flex_box_battery.append(&label_battery_level);
+    flex_box_battery.append(&label_battery_temperature);
+    flex_box_battery.append(&label_battery_status);
+    let flex_box_sim = gtk::Box::builder()
         .orientation(Horizontal)
         .halign(Align::Fill)
         .build();
-    gtk_box_horizontal.set_css_classes(&["panel"]);
-    gtk_box_horizontal2.set_css_classes(&["panel"]);
-    gtk_box_horizontal2.append(&label_network_type);
-    gtk_box_horizontal2.append(&label_sim_operator_name);
-    gtk_box_horizontal2.append(&label_sim_operator);
-    gtk_box_horizontal2.append(&label_sim_county_iso);
+    flex_box_battery.set_css_classes(&["panel"]);
+    flex_box_sim.set_css_classes(&["panel"]);
+    flex_box_sim.append(&label_network_type);
+    flex_box_sim.append(&label_sim_operator_name);
+    flex_box_sim.append(&label_sim_operator);
+    flex_box_sim.append(&label_sim_county_iso);
 
     let text_signal_param =gtk::TextBuffer::new(None);
     let textview =gtk::TextView::with_buffer(&text_signal_param);
@@ -121,7 +121,7 @@ fn build_ui(app: &Application) {
     edit_ip_address.set_text(ip);
     edit_ip_address.set_widget_name("edit_ip");
     
-    let gtk_box_g=gtk::Box::builder()
+    let flex_box_signal=gtk::Box::builder()
        .orientation(Vertical)
        .build();
     let stack = gtk::Stack::new();
@@ -140,14 +140,14 @@ fn build_ui(app: &Application) {
     label_met_new_phone_input.set_widget_name("new_sms_input");
     label_met_new_phone_input.set_justify(Justification::Center);
     label_met_new_phone_input.set_visible(false);
-    gtk_box_g.append(&label_met_new_phone_input);
+    flex_box_signal.append(&label_met_new_phone_input);
     let label_met_new_sms_input = gtk::Label::new(Some("📩\nНовое СМС"));
     label_met_new_sms_input.set_widget_name("new_sms_input");
     label_met_new_sms_input.set_justify(Justification::Center);
     label_met_new_sms_input.set_visible(false);
-    gtk_box_g.append(&label_met_new_sms_input);
+    flex_box_signal.append(&label_met_new_sms_input);
 
-    gtk_box_g.append(&edit_ip_address);
+    flex_box_signal.append(&edit_ip_address);
     let label_politic = gtk::Label::new(Some("Продолжая использовать программу Вы соглашаетесь с "));
     let button_politic = gtk::Button::with_label("Политикой конфиденциальности");
     let politic = config.param.entry("politic".to_string()).or_insert_with(||{"".to_string()});
@@ -179,7 +179,7 @@ fn build_ui(app: &Application) {
         gtk_box_politic.append(&button_close);
 
         let window = gtk::Window::builder()
-            .title("Ydav-gtk v1.2.0")
+            .title("Ydav-gtk v1.3.0")
             .height_request(320)
             .width_request(360)
             .child(&gtk_box_politic)
@@ -202,7 +202,7 @@ fn build_ui(app: &Application) {
         .build();
     panel_box_politic.append(&label_politic);
     panel_box_politic.append(&button_politic);
-    gtk_box_g.append(&panel_box_politic);
+    flex_box_signal.append(&panel_box_politic);
     let button_about = gtk::Button::with_label("О программе");
     button_about.set_css_classes(&["button_politic"]);
     button_about.connect_clicked(clone!(
@@ -221,6 +221,7 @@ fn build_ui(app: &Application) {
         scrolled_politic.set_vexpand_set(true);
         text_politic.set_text("Программа клиент Ydav-gtk4 для сервера Ydav2024 for Android версия: 1.3.0");
         let button_git = gtk::Button::with_label("https://ydav-android.p-k-53.ru/");
+        button_git.set_css_classes(&["button"]);
         button_git.set_tooltip_text(Some("Нажмите для копирования адреса в буфер обмена"));
         button_git.connect_clicked(clone!(
             #[weak]
@@ -230,6 +231,7 @@ fn build_ui(app: &Application) {
             }
         ));
         let button_www = gtk::Button::with_label("https://github.com/almaz-vil/ydav-gtk4.git");
+        button_www.set_css_classes(&["button"]);
         button_www.set_tooltip_text(Some("Нажмите для копирования адреса в буфер обмена"));
         button_www.connect_clicked(clone!(
             #[weak]
@@ -239,14 +241,14 @@ fn build_ui(app: &Application) {
             }
         ));
         let button_close = gtk::Button::with_label("Хорошо");
-
+        button_close.set_css_classes(&["button"]);
         let gtk_box_politic = gtk::Box::builder()
             .orientation(Vertical)
             .build();
+        gtk_box_politic.set_css_classes(&["panel_win"]);
         gtk_box_politic.append(&button_git);
         gtk_box_politic.append(&button_www);
         gtk_box_politic.append(&scrolled_politic);
-
         gtk_box_politic.append(&button_close);
 
         let window = gtk::Window::builder()
@@ -263,16 +265,17 @@ fn build_ui(app: &Application) {
         window.present();
 
     }));
-    gtk_box_g.append(&button_about);
-    gtk_box_g.set_homogeneous(false);
-    gtk_box_g.set_css_classes(&["panel_win"]);
-    gtk_box_g.append(&gtk_box_horizontal);
-    gtk_box_g.append(&gtk_box_horizontal2);
-    gtk_box_g.append(&scrolled_signal_param);
+    flex_box_signal.append(&button_about);
+    flex_box_signal.set_homogeneous(false);
+    flex_box_signal.set_css_classes(&["panel_win"]);
+    flex_box_signal.append(&flex_box_battery);
+    flex_box_signal.append(&flex_box_sim);
+    flex_box_signal.append(&scrolled_signal_param);
 
-    gtk_box_horizontal.set_visible(false);
-    gtk_box_horizontal2.set_visible(false);
+    flex_box_battery.set_visible(false);
+    flex_box_sim.set_visible(false);
     let edit_sms_output_phone = gtk::Entry::new();
+    edit_sms_output_phone.set_width_request(80);
     //****Контакты********************************************************************************
     let factory_contact_phone = gtk::SignalListItemFactory::new();
     factory_contact_phone.connect_setup( move |_, list_item| {
@@ -747,6 +750,7 @@ fn build_ui(app: &Application) {
         .build();
     let button_sms_output_send = gtk::Button::builder()
         .label("Отправить").build();
+    button_sms_output_send.set_css_classes(&["button"]);
     flex_box_sms_output.append(&label);
     flex_box_sms_output.append(&scrolled_sms_output_text);
     flex_box_sms_output.append(&button_sms_output_send);
@@ -758,15 +762,16 @@ fn build_ui(app: &Application) {
     scrolled_sms_output.set_vexpand(true);
     flex_box_sms_output.append(&scrolled_sms_output);
     button_phone_get.set_css_classes(&["button"]);
+
     let edit_ussd_command = gtk::Entry::new();
     edit_ussd_command.set_text("*100#");
     let button_send_ussd_command = gtk::Button::with_label("Отправить USSD команду");
-    let box_send_ussd = gtk::Box::builder()
-        .orientation(Horizontal)
-        .build();
+    button_send_ussd_command.set_css_classes(&["button"]);
+    let box_send_ussd = gtk::FlowBox::new();
     box_send_ussd.append(&edit_ussd_command);
     box_send_ussd.append(&button_send_ussd_command);
     let button_result_ussd_command = gtk::Button::with_label("Чтения результата USSD команды");
+    button_result_ussd_command.set_css_classes(&["button"]);
     let text_result_ussd =gtk::TextBuffer::new(None);
     let textview =gtk::TextView::with_buffer(&text_result_ussd);
     textview.set_widget_name("text_signal_param");
@@ -785,7 +790,29 @@ fn build_ui(app: &Application) {
     flex_box_ussd_command.append(&button_result_ussd_command);
     flex_box_ussd_command.append(&scrolled_result_ussd);
     stack.set_css_classes(&["panel_win"]);
-    stack.add_titled(&gtk_box_g, Some("Signal"),"Сигнал и батарейка");
+    let flex_box = gtk::FlowBox::new();
+    let button_signal_panel = gtk::Button::with_label("Сигнал и батарейка");
+    let button_phone_panel = gtk::Button::with_label("✆Входящие звонки");
+    let button_contact_panel = gtk::Button::with_label("Контакты");
+    let button_sms_input_panel = gtk::Button::with_label("Входящие СМС");
+    let button_sms_output_panel = gtk::Button::with_label("СМС");
+    let button_ussd_panel = gtk::Button::with_label("USSD");
+    let button_log_panel = gtk::Button::with_label("✎Лог");
+    button_signal_panel.set_css_classes(&["button_panel_hover"]);
+    button_phone_panel.set_css_classes(&["button"]);
+    button_contact_panel.set_css_classes(&["button"]);
+    button_sms_input_panel.set_css_classes(&["button"]);
+    button_sms_output_panel.set_css_classes(&["button"]);
+    button_ussd_panel.set_css_classes(&["button"]);
+    button_log_panel.set_css_classes(&["button"]);
+    flex_box.append(&button_signal_panel);
+    flex_box.append(&button_phone_panel);
+    flex_box.append(&button_contact_panel);
+    flex_box.append(&button_sms_input_panel);
+    flex_box.append(&button_sms_output_panel);
+    flex_box.append(&button_ussd_panel);
+    flex_box.append(&button_log_panel);
+    stack.add_titled(&flex_box_signal, Some("Signal"), "Сигнал и батарейка");
     stack.add_titled(&flex_box_list_phone, Some("Phone"), "✆Входящие звонки");
     stack.add_titled(&flex_box_contact,Some("Contact"),"Контакты");
     stack.add_titled(&flex_box_sms_input,Some("InputSMS"),"Входящие СМС");
@@ -795,15 +822,341 @@ fn build_ui(app: &Application) {
     let stack_switcher = gtk::StackSwitcher::builder()
         .stack(&stack)
         .build();
+    button_log_panel.connect_clicked(clone!(
+        #[weak]
+        flex_box_signal,
+        #[weak]
+        flex_box_list_phone,
+        #[weak]
+        flex_box_contact,
+        #[weak]
+        flex_box_sms_input,
+        #[weak]
+        flex_box_sms_output,
+        #[weak]
+        flex_box_ussd_command,
+        #[weak]
+        flex_box_log,
+        #[weak]
+        button_signal_panel,
+        #[weak]
+        button_phone_panel,
+        #[weak]
+        button_contact_panel,
+        #[weak]
+        button_sms_input_panel,
+        #[weak]
+        button_sms_output_panel,
+        #[weak]
+        button_ussd_panel,
+        #[weak]
+        button_log_panel,
+        move|_|{
+        button_signal_panel.set_css_classes(&["button"]);
+        button_phone_panel.set_css_classes(&["button"]);
+        button_contact_panel.set_css_classes(&["button"]);
+        button_sms_input_panel.set_css_classes(&["button"]);
+        button_sms_output_panel.set_css_classes(&["button"]);
+        button_ussd_panel.set_css_classes(&["button"]);
+        button_log_panel.set_css_classes(&["button_panel_hover"]);
+        flex_box_signal.set_visible(false);
+        flex_box_list_phone.set_visible(false);
+        flex_box_contact.set_visible(false);
+        flex_box_sms_input.set_visible(false);
+        flex_box_sms_output.set_visible(false);
+        flex_box_ussd_command.set_visible(false);
+        flex_box_log.set_visible(true);
+    }));
+    button_ussd_panel.connect_clicked(clone!(
+        #[weak]
+        flex_box_signal,
+        #[weak]
+        flex_box_list_phone,
+        #[weak]
+        flex_box_contact,
+        #[weak]
+        flex_box_sms_input,
+        #[weak]
+        flex_box_sms_output,
+        #[weak]
+        flex_box_ussd_command,
+        #[weak]
+        flex_box_log,
+        #[weak]
+        button_signal_panel,
+        #[weak]
+        button_phone_panel,
+        #[weak]
+        button_contact_panel,
+        #[weak]
+        button_sms_input_panel,
+        #[weak]
+        button_sms_output_panel,
+        #[weak]
+        button_ussd_panel,
+        #[weak]
+        button_log_panel,
+        move|_|{
+        button_signal_panel.set_css_classes(&["button"]);
+        button_phone_panel.set_css_classes(&["button"]);
+        button_contact_panel.set_css_classes(&["button"]);
+        button_sms_input_panel.set_css_classes(&["button"]);
+        button_sms_output_panel.set_css_classes(&["button"]);
+        button_ussd_panel.set_css_classes(&["button_panel_hover"]);
+        button_log_panel.set_css_classes(&["button"]);
+        flex_box_signal.set_visible(false);
+        flex_box_list_phone.set_visible(false);
+        flex_box_contact.set_visible(false);
+        flex_box_sms_input.set_visible(false);
+        flex_box_sms_output.set_visible(false);
+        flex_box_ussd_command.set_visible(true);
+        flex_box_log.set_visible(false);
+    }));
+    button_sms_output_panel.connect_clicked(clone!(
+        #[weak]
+        flex_box_signal,
+        #[weak]
+        flex_box_list_phone,
+        #[weak]
+        flex_box_contact,
+        #[weak]
+        flex_box_sms_input,
+        #[weak]
+        flex_box_sms_output,
+        #[weak]
+        flex_box_ussd_command,
+        #[weak]
+        flex_box_log,
+
+        #[weak]
+        button_signal_panel,
+        #[weak]
+        button_phone_panel,
+        #[weak]
+        button_contact_panel,
+        #[weak]
+        button_sms_input_panel,
+        #[weak]
+        button_sms_output_panel,
+        #[weak]
+        button_ussd_panel,
+        #[weak]
+        button_log_panel,
+        move|_|{
+        button_signal_panel.set_css_classes(&["button"]);
+        button_phone_panel.set_css_classes(&["button"]);
+        button_contact_panel.set_css_classes(&["button"]);
+        button_sms_input_panel.set_css_classes(&["button"]);
+        button_sms_output_panel.set_css_classes(&["button_panel_hover"]);
+        button_ussd_panel.set_css_classes(&["button"]);
+        button_log_panel.set_css_classes(&["button"]);
+        flex_box_signal.set_visible(false);
+        flex_box_list_phone.set_visible(false);
+        flex_box_contact.set_visible(false);
+        flex_box_sms_input.set_visible(false);
+        flex_box_sms_output.set_visible(true);
+        flex_box_ussd_command.set_visible(false);
+        flex_box_log.set_visible(false);
+    }));
+
+    button_sms_input_panel.connect_clicked(clone!(
+        #[weak]
+        flex_box_signal,
+        #[weak]
+        flex_box_list_phone,
+        #[weak]
+        flex_box_contact,
+        #[weak]
+        flex_box_sms_input,
+        #[weak]
+        flex_box_sms_output,
+        #[weak]
+        flex_box_ussd_command,
+        #[weak]
+        flex_box_log,
+
+        #[weak]
+        button_signal_panel,
+        #[weak]
+        button_phone_panel,
+        #[weak]
+        button_contact_panel,
+        #[weak]
+        button_sms_input_panel,
+        #[weak]
+        button_sms_output_panel,
+        #[weak]
+        button_ussd_panel,
+        #[weak]
+        button_log_panel,
+        move|_|{
+        button_signal_panel.set_css_classes(&["button"]);
+        button_phone_panel.set_css_classes(&["button"]);
+        button_contact_panel.set_css_classes(&["button"]);
+        button_sms_input_panel.set_css_classes(&["button_panel_hover"]);
+        button_sms_output_panel.set_css_classes(&["button"]);
+        button_ussd_panel.set_css_classes(&["button"]);
+        button_log_panel.set_css_classes(&["button"]);
+        flex_box_signal.set_visible(false);
+        flex_box_list_phone.set_visible(false);
+        flex_box_contact.set_visible(false);
+        flex_box_sms_input.set_visible(true);
+        flex_box_sms_output.set_visible(false);
+        flex_box_ussd_command.set_visible(false);
+        flex_box_log.set_visible(false);
+    }));
+    button_contact_panel.connect_clicked(clone!(
+        #[weak]
+        flex_box_signal,
+        #[weak]
+        flex_box_list_phone,
+        #[weak]
+        flex_box_contact,
+        #[weak]
+        flex_box_sms_input,
+        #[weak]
+        flex_box_sms_output,
+        #[weak]
+        flex_box_ussd_command,
+        #[weak]
+        flex_box_log,
+
+        #[weak]
+        button_signal_panel,
+        #[weak]
+        button_phone_panel,
+        #[weak]
+        button_contact_panel,
+        #[weak]
+        button_sms_input_panel,
+        #[weak]
+        button_sms_output_panel,
+        #[weak]
+        button_ussd_panel,
+        #[weak]
+        button_log_panel,
+        move|_|{
+        button_signal_panel.set_css_classes(&["button"]);
+        button_phone_panel.set_css_classes(&["button"]);
+        button_contact_panel.set_css_classes(&["button_panel_hover"]);
+        button_sms_input_panel.set_css_classes(&["button"]);
+        button_sms_output_panel.set_css_classes(&["button"]);
+        button_ussd_panel.set_css_classes(&["button"]);
+        button_log_panel.set_css_classes(&["button"]);
+        flex_box_signal.set_visible(false);
+        flex_box_list_phone.set_visible(false);
+        flex_box_contact.set_visible(true);
+        flex_box_sms_input.set_visible(false);
+        flex_box_sms_output.set_visible(false);
+        flex_box_ussd_command.set_visible(false);
+        flex_box_log.set_visible(false);
+    }));
+
+    button_phone_panel.connect_clicked(clone!(
+        #[weak]
+        flex_box_signal,
+        #[weak]
+        flex_box_list_phone,
+        #[weak]
+        flex_box_contact,
+        #[weak]
+        flex_box_sms_input,
+        #[weak]
+        flex_box_sms_output,
+        #[weak]
+        flex_box_ussd_command,
+        #[weak]
+        flex_box_log,
+
+        #[weak]
+        button_signal_panel,
+        #[weak]
+        button_phone_panel,
+        #[weak]
+        button_contact_panel,
+        #[weak]
+        button_sms_input_panel,
+        #[weak]
+        button_sms_output_panel,
+        #[weak]
+        button_ussd_panel,
+        #[weak]
+        button_log_panel,
+        move|_|{
+        button_signal_panel.set_css_classes(&["button"]);
+        button_phone_panel.set_css_classes(&["button_panel_hover"]);
+        button_contact_panel.set_css_classes(&["button"]);
+        button_sms_input_panel.set_css_classes(&["button"]);
+        button_sms_output_panel.set_css_classes(&["button"]);
+        button_ussd_panel.set_css_classes(&["button"]);
+        button_log_panel.set_css_classes(&["button"]);
+        flex_box_signal.set_visible(false);
+        flex_box_list_phone.set_visible(true);
+        flex_box_contact.set_visible(false);
+        flex_box_sms_input.set_visible(false);
+        flex_box_sms_output.set_visible(false);
+        flex_box_ussd_command.set_visible(false);
+        flex_box_log.set_visible(false);
+    }));
+
+    button_signal_panel.connect_clicked(clone!(
+        #[weak]
+        flex_box_signal,
+        #[weak]
+        flex_box_list_phone,
+        #[weak]
+        flex_box_contact,
+        #[weak]
+        flex_box_sms_input,
+        #[weak]
+        flex_box_sms_output,
+        #[weak]
+        flex_box_ussd_command,
+        #[weak]
+        flex_box_log,
+
+        #[weak]
+        button_signal_panel,
+        #[weak]
+        button_phone_panel,
+        #[weak]
+        button_contact_panel,
+        #[weak]
+        button_sms_input_panel,
+        #[weak]
+        button_sms_output_panel,
+        #[weak]
+        button_ussd_panel,
+        #[weak]
+        button_log_panel,
+        move|_|{
+        button_signal_panel.set_css_classes(&["button_panel_hover"]);
+        button_phone_panel.set_css_classes(&["button"]);
+        button_contact_panel.set_css_classes(&["button"]);
+        button_sms_input_panel.set_css_classes(&["button"]);
+        button_sms_output_panel.set_css_classes(&["button"]);
+        button_ussd_panel.set_css_classes(&["button"]);
+        button_log_panel.set_css_classes(&["button"]);
+        flex_box_signal.set_visible(true);
+        flex_box_list_phone.set_visible(false);
+        flex_box_contact.set_visible(false);
+        flex_box_sms_input.set_visible(false);
+        flex_box_sms_output.set_visible(false);
+        flex_box_ussd_command.set_visible(false);
+        flex_box_log.set_visible(false);
+    }));
+
+    flex_box.set_css_classes(&["panel_win"]);
     stack_switcher.set_css_classes(&["button"]);
     let gtk_box_stack=gtk::Box::builder()
         .orientation(Vertical)
         .halign(Align::Fill)
         .valign(Align::Fill)
         .build();
-    gtk_box_stack.append(&stack_switcher);
+    //gtk_box_stack.append(&stack_switcher);
     stack.set_vexpand(true);
     stack.set_vexpand_set(true);
+    gtk_box_stack.append(&flex_box);
     gtk_box_stack.append(&stack);
     gtk_box_stack.append(&status);
     let window = ApplicationWindow::builder()
@@ -815,8 +1168,8 @@ fn build_ui(app: &Application) {
     window.set_widget_name("window");
     load_css();
     window.present();
-
-
+    window.set_default_size(20,220);
+    //window.set_size_request(220,320);
     let connection = Config::sql_connection();
     let query = "SELECT id_na_android, phone, time, body FROM sms_input ORDER BY _id DESC ";
     let mut statement = connection.prepare(query).unwrap();
@@ -1224,13 +1577,13 @@ fn build_ui(app: &Application) {
         let address = edit_ip_address.text().to_string();
         let log= match Info::connect(address) {
             Ok(info)=>{
-                gtk_box_horizontal.set_visible(true);
-                gtk_box_horizontal2.set_visible(true);
+                flex_box_battery.set_visible(true);
+                flex_box_sim.set_visible(true);
                 info
             },
             Err(error)=>{
-                gtk_box_horizontal.set_visible(false);
-                gtk_box_horizontal2.set_visible(false);
+                flex_box_battery.set_visible(false);
+                flex_box_sim.set_visible(false);
                 times.set_markup(format!("{}", error).as_str());
                 let sender = sender_info.clone();
                 sender.send_blocking(true).unwrap();
