@@ -29,7 +29,7 @@ use gdk4::glib::{clone, home_dir, ControlFlow, Object};
 use gdk4::pango::EllipsizeMode;
 use gtk::glib;
 use gtk::prelude::*;
-use gtk::{Application, ApplicationWindow};
+use gtk::ApplicationWindow;
 use gtk::{ColumnViewColumn, ListItem};
 use gtk4 as gtk;
 use gtk4::glib::Propagation;
@@ -40,14 +40,14 @@ use std::io::{BufWriter, Write};
 
 fn main() {
     gio::resources_register_include!("compiled.gresource").unwrap();
-    let app = Application::builder()
+    let app = adw::Application::builder()
         .application_id("ru.Dimon.Ydav-gtk")
         .build();
     app.connect_activate(build_ui);
     app.run();
 }
 
-fn build_ui(app: &Application) {
+fn build_ui(app: &adw::Application) {
     let mut config = Config::new();
     if let Err(_e)=config.load(){
         let sql = include_str!("sql.in").to_string();
@@ -119,7 +119,7 @@ fn build_ui(app: &Application) {
     let edit_ip_address = gtk::Entry::new();
     let ip = config.param.entry("ip".to_string()).or_insert_with(||{"192.168.1.91:38300".to_string()});
     edit_ip_address.set_text(ip);
-    edit_ip_address.set_widget_name("edit_ip");
+    edit_ip_address.set_css_classes(&["edit"]);
     
     let flex_box_signal=gtk::Box::builder()
        .orientation(Vertical)
@@ -275,6 +275,7 @@ fn build_ui(app: &Application) {
     flex_box_battery.set_visible(false);
     flex_box_sim.set_visible(false);
     let edit_sms_output_phone = gtk::Entry::new();
+    edit_sms_output_phone.set_css_classes(&["edit"]);
     edit_sms_output_phone.set_width_request(80);
     //****Контакты********************************************************************************
     let factory_contact_phone = gtk::SignalListItemFactory::new();
@@ -317,13 +318,14 @@ fn build_ui(app: &Application) {
             let box_error = gtk::Box::builder().orientation(Horizontal).build();
             let label = gtk::Label::new(Some(format!("Ошибка \"{}\" базы данных. \n Будет создана новая база. Подождите ... ", e).as_str()));
             box_error.append(&label);
-            let window = ApplicationWindow::builder()
+            let window = adw::ApplicationWindow::builder()
                 .application(app)
                 .title("Ydav-gtk")
                 .default_height(300)
-                .child(&box_error)
-                .icon_name("ru_dimon_ydav_2024")
                 .build();
+            window.set_child(Some(&box_error));
+            window.set_icon_name(Some("ru_dimon_ydav_2024"));
+
             window.set_widget_name("window");
             load_css();
             window.present();
@@ -671,12 +673,19 @@ fn build_ui(app: &Application) {
     let button_contact_csv=gtk::Button::builder()
         .label("Сохранить в формате CSV")
         .build();
+    let button_contact_clear=gtk::Button::builder()
+        .label("Удалить все")
+        .build();
     button_contact_csv.set_css_classes(&["button"]);
+    button_contact_clear.set_css_classes(&["button"]);
     let csv_model_contact = model_contact_object.clone();
     let flex_box_contact=gtk::Box::builder()
         .orientation(Vertical).build();
     flex_box_contact.append(&button_contact_get);
-    flex_box_contact.append(&button_contact_csv);
+    let flex_box_contect_button = gtk::FlowBox::new();
+    flex_box_contect_button.append(&button_contact_csv);
+    flex_box_contect_button.append(&button_contact_clear);
+    flex_box_contact.append(&flex_box_contect_button);
 
     let label_count_contact = gtk::Label::new(None);
     label_count_contact.set_widget_name("label_count_contact");
@@ -730,9 +739,10 @@ fn build_ui(app: &Application) {
     combo_box_phone.set_css_classes(&["button"]);
     let edit_phone = edit_sms_output_phone.clone();
     combo_box_phone.connect_selected_notify(move |dd|{
-       let binding = dd.selected_item().unwrap();
-       let sel = binding.downcast_ref::<contact_object::ContactObject>().unwrap();
-       edit_phone.set_text(sel.property::<String>("phone").as_str());
+        if let Some(binding) = dd.selected_item(){
+           let sel = binding.downcast_ref::<contact_object::ContactObject>().unwrap();
+           edit_phone.set_text(sel.property::<String>("phone").as_str());
+        }
    });
     flex_box_sms_output_box_horizontal.append(&label);
     flex_box_sms_output_box_horizontal.append(&edit_sms_output_phone);
@@ -764,6 +774,7 @@ fn build_ui(app: &Application) {
     button_phone_get.set_css_classes(&["button"]);
 
     let edit_ussd_command = gtk::Entry::new();
+    edit_ussd_command.set_css_classes(&["edit"]);
     edit_ussd_command.set_text("*100#");
     let button_send_ussd_command = gtk::Button::with_label("Отправить USSD команду");
     button_send_ussd_command.set_css_classes(&["button"]);
@@ -791,7 +802,10 @@ fn build_ui(app: &Application) {
     flex_box_ussd_command.append(&scrolled_result_ussd);
     stack.set_css_classes(&["panel_win"]);
     let flex_box = gtk::FlowBox::new();
+    flex_box.set_column_spacing(0);
+    flex_box.set_row_spacing(0);
     let button_signal_panel = gtk::Button::with_label("Сигнал и батарейка");
+
     let button_phone_panel = gtk::Button::with_label("✆Входящие звонки");
     let button_contact_panel = gtk::Button::with_label("Контакты");
     let button_sms_input_panel = gtk::Button::with_label("Входящие СМС");
@@ -1168,8 +1182,10 @@ fn build_ui(app: &Application) {
     window.set_widget_name("window");
     load_css();
     window.present();
-    window.set_default_size(20,220);
-    //window.set_size_request(220,320);
+    let width_windows = config.param.entry("width".to_string()).or_insert_with(||{"320".to_string()}).to_string();
+    let height_windows = config.param.entry("width".to_string()).or_insert_with(||{"220".to_string()}).to_string();
+    window.set_default_size(width_windows.parse::<i32>().unwrap_or_else(|_|320),
+                            height_windows.parse::<i32>().unwrap_or_else(|_|220));
     let connection = Config::sql_connection();
     let query = "SELECT id_na_android, phone, time, body FROM sms_input ORDER BY _id DESC ";
     let mut statement = connection.prepare(query).unwrap();
@@ -1268,15 +1284,29 @@ fn build_ui(app: &Application) {
     window.connect_close_request(clone!(
         #[weak]
         edit_ip_address,
+        #[weak]
+        window,
         #[upgrade_or]
         Propagation::Proceed,
-        move |_x1| {
-        let mut config = Config::new();
+        move |_| {
+            let mut config = Config::new();
             let address = edit_ip_address.text().to_string();
             config.param.insert("ip".to_string(), address);
-        config.save();
-        Propagation::Proceed
+            let w = window.width();
+            let h = window.height();
+            config.param.insert("width".to_string(), w.to_string());
+            config.param.insert("height".to_string(), h.to_string());
+            config.save();
+            Propagation::Proceed
     }));
+    let model_contact_remove=model_contact_object.clone();
+    button_contact_clear.connect_clicked(
+        move |_x1|{
+        model_contact_remove.remove_all();
+        let sql ="DELETE FROM contact;".to_string();
+        Config::sql_execute(sql);
+
+    });
 
     button_contact_csv.connect_clicked(move |_x1| {
         let file_filter = gtk::FileFilter::new();
@@ -1467,6 +1497,8 @@ fn build_ui(app: &Application) {
         edit_ip_address,
         #[weak]
         times,
+        #[weak]
+        model_contact_object,
         move |_b|{
         let address = edit_ip_address.text().to_string();
         let contact = match Contact::connect(address){

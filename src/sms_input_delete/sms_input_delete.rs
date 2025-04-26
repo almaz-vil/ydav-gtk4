@@ -10,8 +10,8 @@ pub struct SmsCount {
 }
 #[warn(dead_code)]
 pub struct SmsInputDelete{
-    pub sms: SmsCount,
-    pub json: String
+    pub _sms: SmsCount,
+    pub _json: String
 }
 
 impl ReadJsonAndroid for SmsCount {}
@@ -20,7 +20,7 @@ impl ReadJsonAndroid for SmsCount {}
 impl SmsInputDelete{
     pub fn connect(address: String, param: &str)->Result<SmsInputDelete, String>{
         match SmsCount::connect(address, CommandSend::DelSmsInput, param){
-            Ok((sms,json))=>Ok(SmsInputDelete {sms, json}),
+            Ok((sms,json))=>Ok(SmsInputDelete { _sms: sms, _json: json }),
             Err(e)=> Err(e)
         }
     }

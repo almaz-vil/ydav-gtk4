@@ -11,10 +11,12 @@
     font: 14px sans-serif;
   }
 
-  #edit_ip{
+  .edit{
     margin-top: .5em;
     margin-left: .5em;
     border:  2px solid green;
+    background-color: white;
+    color: black;
   }
   
   .info{
@@ -79,16 +81,15 @@
   background-color: lightyellow;
   color: black;
   border: 2px solid darkgoldenrod;
-  margin: 3px;
-  padding: 2px;
+  padding: 0px;
 }
 .button_panel{
+  margin: 0;
+  padding: 0px;
   background-image: none;
   background-color: beige;
   color: black;
   border: 2px solid darkgoldenrod;
-  margin: 2px;
-  padding: 2px;
 }
 
 #log{

@@ -9,8 +9,8 @@ pub struct PhoneCount {
     pub phone: usize
 }
 pub struct PhoneDelete {
-    pub phone: PhoneCount,
-    pub json: String
+    pub _phone: PhoneCount,
+    pub _json: String
 }
 
 impl ReadJsonAndroid for PhoneCount {}
@@ -19,7 +19,7 @@ impl ReadJsonAndroid for PhoneCount {}
 impl PhoneDelete {
     pub fn connect(address: String, param: &str)->Result<PhoneDelete, String>{
         match PhoneCount::connect(address, CommandSend::DelPhone, param){
-            Ok((phone,json))=>Ok(PhoneDelete {phone, json}),
+            Ok((_phone,_json))=>Ok(PhoneDelete {_phone, _json}),
             Err(e)=> Err(e)
         }
     }
