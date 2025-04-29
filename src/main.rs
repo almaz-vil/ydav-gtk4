@@ -61,7 +61,7 @@ fn build_ui(app: &adw::Application) {
     // Буфер обмена ОС
     let display = gdk::Display::default().unwrap();
     let clipboard = display.clipboard();
-    let flex_box_battery =gtk::Box::builder()
+  /*  let flex_box_battery =gtk::Box::builder()
         .orientation(Horizontal)
         .halign(Align::Fill)
         .build();
@@ -76,7 +76,7 @@ fn build_ui(app: &adw::Application) {
     label_battery_temperature.set_tooltip_text(Some("Температура аккумулятора"));
     let label_battery_status = gtk::Label::new(Some("_"));
     label_battery_status.set_css_classes(&class_info);
-
+*/
     let label_network_type = gtk::Label::new(Some("_"));
     label_network_type.set_css_classes(&class_info);
     label_network_type.set_tooltip_text(Some("Тип связи"));
@@ -89,20 +89,32 @@ fn build_ui(app: &adw::Application) {
     let label_sim_operator_name = gtk::Label::new(Some("_"));
     label_sim_operator_name.set_css_classes(&class_info);
     label_sim_operator_name.set_tooltip_text(Some("Оператор СИМ"));
-    flex_box_battery.append(&label_battery_charge);
+  /*  flex_box_battery.append(&label_battery_charge);
     flex_box_battery.append(&label_battery_level);
     flex_box_battery.append(&label_battery_temperature);
-    flex_box_battery.append(&label_battery_status);
+    flex_box_battery.append(&label_battery_status);*/
     let flex_box_sim = gtk::Box::builder()
         .orientation(Horizontal)
         .halign(Align::Fill)
         .build();
-    flex_box_battery.set_css_classes(&["panel"]);
+ //   flex_box_battery.set_css_classes(&["panel"]);
     flex_box_sim.set_css_classes(&["panel"]);
     flex_box_sim.append(&label_network_type);
     flex_box_sim.append(&label_sim_operator_name);
     flex_box_sim.append(&label_sim_operator);
     flex_box_sim.append(&label_sim_county_iso);
+
+    let text_battery_param =gtk::TextBuffer::new(None);
+    let textview =gtk::TextView::with_buffer(&text_battery_param);
+    textview.set_widget_name("text_signal_param");
+    textview.set_wrap_mode(WrapMode::Word);
+    textview.set_buffer(Some(&text_battery_param));
+    let scrolled_battery_param =gtk::ScrolledWindow::builder()
+        .child(&textview)
+        .propagate_natural_width(true)
+        .build();
+    scrolled_battery_param.set_vexpand(true);
+    scrolled_battery_param.set_vexpand_set(true);
 
     let text_signal_param =gtk::TextBuffer::new(None);
     let textview =gtk::TextView::with_buffer(&text_signal_param);
@@ -120,10 +132,10 @@ fn build_ui(app: &adw::Application) {
     let ip = config.param.entry("ip".to_string()).or_insert_with(||{"192.168.1.91:38300".to_string()});
     edit_ip_address.set_text(ip);
     edit_ip_address.set_css_classes(&["edit"]);
-    
+
     let flex_box_signal=gtk::Box::builder()
-       .orientation(Vertical)
-       .build();
+        .orientation(Vertical)
+        .build();
     let stack = gtk::Stack::new();
     let times = gtk::Label::new(Some(""));
     let button_stop_info = gtk::Button::new();
@@ -268,11 +280,11 @@ fn build_ui(app: &adw::Application) {
     flex_box_signal.append(&button_about);
     flex_box_signal.set_homogeneous(false);
     flex_box_signal.set_css_classes(&["panel_win"]);
-    flex_box_signal.append(&flex_box_battery);
+    flex_box_signal.append(&scrolled_battery_param);
     flex_box_signal.append(&flex_box_sim);
     flex_box_signal.append(&scrolled_signal_param);
 
-    flex_box_battery.set_visible(false);
+//    flex_box_battery.set_visible(false);
     flex_box_sim.set_visible(false);
     let edit_sms_output_phone = gtk::Entry::new();
     edit_sms_output_phone.set_css_classes(&["edit"]);
@@ -306,7 +318,7 @@ fn build_ui(app: &adw::Application) {
             .factorion(list_item, "name");
     });
     let column_contact_name =ColumnViewColumn::new(Some("Имя"), Some(factory_contact_name));
-   column_contact_name.set_expand(true);
+    column_contact_name.set_expand(true);
     let model_contact_object: gio::ListStore = gio::ListStore::new::<contact_object::ContactObject>();
     let no_selection_contact_model = gtk::NoSelection::new(Some(model_contact_object.clone()));
     let selection_contact_model = gtk::SingleSelection::new(Some(no_selection_contact_model));
@@ -361,7 +373,7 @@ fn build_ui(app: &adw::Application) {
         add_label_is_item(list_item);
     });
     factory_phone.connect_bind(move |_, list_item| {
-         list_item
+        list_item
             .downcast_ref::<ListItem>()
             .expect("Needs to be ListItem")
             .item()
@@ -410,7 +422,7 @@ fn build_ui(app: &adw::Application) {
         add_label_is_item(list_item);
     });
     factory_sms_input_time.connect_bind(move |_, list_item| {
-         list_item
+        list_item
             .downcast_ref::<ListItem>()
             .expect("Needs to be ListItem")
             .item()
@@ -550,7 +562,7 @@ fn build_ui(app: &adw::Application) {
         .orientation(Horizontal)
         .build();
     let dop_panel_for_button_body_input_sms = dop_panel_for_button_body_input_smst.clone();
-       //Строка для поиска ссылок и цифр в тексте СМС
+    //Строка для поиска ссылок и цифр в тексте СМС
     let semver_sms_input = regex::Regex::new(r"(\d+)|([-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*))").expect("Ошибка парсера входящих СМС");
     selection_sms_input_model.connect_selection_changed(clone!(
             #[weak]
@@ -607,7 +619,15 @@ fn build_ui(app: &adw::Application) {
     let button_phone_get =gtk::Button::builder()
         .label("Запрос звонков")
         .build();
-    flex_box_list_phone.append(&button_phone_get);
+    let button_list_phone_clear=gtk::Button::builder()
+        .label("Очистить")
+        .build();
+    button_list_phone_clear.set_css_classes(&["button"]);
+    let flex_box_list_phone_buttons = gtk::FlowBox::new();
+    flex_box_list_phone_buttons.append(&button_phone_get);
+    flex_box_list_phone_buttons.append(&button_list_phone_clear);
+
+    flex_box_list_phone.append(&flex_box_list_phone_buttons);
     let scrolled_list_phone =gtk::ScrolledWindow::builder()
         .child(&column_view_phone)
         .propagate_natural_width(true)
@@ -700,14 +720,22 @@ fn build_ui(app: &adw::Application) {
 
 
     let button_sms_input_get=gtk::Button::builder()
-        .label("Входящих СМС (загрузка с телефона)")
+        .label("Запрос СМС")
         .sensitive(false)
         .build();
+    button_sms_input_get.set_tooltip_text(Some("Входящих СМС (загрузка с телефона)"));
     button_sms_input_get.set_css_classes(&["button"]);
 
     let flex_box_sms_input =gtk::Box::builder()
         .orientation(Vertical).build();
-    flex_box_sms_input.append(&button_sms_input_get);
+    let button_sms_input_clear=gtk::Button::builder()
+        .label("Очистить")
+        .build();
+    button_sms_input_clear.set_css_classes(&["button"]);
+    let flex_box_sms_input_buttons = gtk::FlowBox::new();
+    flex_box_sms_input_buttons.append(&button_sms_input_get);
+    flex_box_sms_input_buttons.append(&button_sms_input_clear);
+    flex_box_sms_input.append(&flex_box_sms_input_buttons);
     let scrolled_sms_input =gtk::ScrolledWindow::builder()
         .child(&column_view_sms_input)
         .propagate_natural_width(true)
@@ -727,9 +755,8 @@ fn build_ui(app: &adw::Application) {
 
     let flex_box_sms_output = gtk::Box::builder()
         .orientation(Vertical).build();
-    let flex_box_sms_output_box_horizontal =gtk::Box::builder()
-        .orientation(Horizontal).build();
-    let label = gtk::Label::new(Some("Выбор номера телефона"));
+    let flex_box_sms_output_box_horizontal =gtk::FlowBox::new();
+    let label = gtk::Label::new(Some("Телефон:"));
     let exp = gtk::PropertyExpression::new(
         contact_object::ContactObject::static_type(),
         None::<gtk::Expression>,
@@ -740,10 +767,10 @@ fn build_ui(app: &adw::Application) {
     let edit_phone = edit_sms_output_phone.clone();
     combo_box_phone.connect_selected_notify(move |dd|{
         if let Some(binding) = dd.selected_item(){
-           let sel = binding.downcast_ref::<contact_object::ContactObject>().unwrap();
-           edit_phone.set_text(sel.property::<String>("phone").as_str());
+            let sel = binding.downcast_ref::<contact_object::ContactObject>().unwrap();
+            edit_phone.set_text(sel.property::<String>("phone").as_str());
         }
-   });
+    });
     flex_box_sms_output_box_horizontal.append(&label);
     flex_box_sms_output_box_horizontal.append(&edit_sms_output_phone);
     flex_box_sms_output_box_horizontal.append(&combo_box_phone);
@@ -763,7 +790,15 @@ fn build_ui(app: &adw::Application) {
     button_sms_output_send.set_css_classes(&["button"]);
     flex_box_sms_output.append(&label);
     flex_box_sms_output.append(&scrolled_sms_output_text);
-    flex_box_sms_output.append(&button_sms_output_send);
+
+    let button_sms_output_clear=gtk::Button::builder()
+        .label("Очистить")
+        .build();
+    button_sms_output_clear.set_css_classes(&["button"]);
+    let flex_box_sms_output_buttons = gtk::FlowBox::new();
+    flex_box_sms_output_buttons.append(&button_sms_output_send);
+    flex_box_sms_output_buttons.append(&button_sms_output_clear);
+    flex_box_sms_output.append(&flex_box_sms_output_buttons);
     let scrolled_sms_output=gtk::ScrolledWindow::builder()
         .child(&column_view_sms_output)
         .height_request(100)
@@ -776,12 +811,14 @@ fn build_ui(app: &adw::Application) {
     let edit_ussd_command = gtk::Entry::new();
     edit_ussd_command.set_css_classes(&["edit"]);
     edit_ussd_command.set_text("*100#");
-    let button_send_ussd_command = gtk::Button::with_label("Отправить USSD команду");
+    let button_send_ussd_command = gtk::Button::with_label("Отправить");
+    button_send_ussd_command.set_tooltip_text(Some("Отправить USSD команду"));
     button_send_ussd_command.set_css_classes(&["button"]);
     let box_send_ussd = gtk::FlowBox::new();
     box_send_ussd.append(&edit_ussd_command);
     box_send_ussd.append(&button_send_ussd_command);
-    let button_result_ussd_command = gtk::Button::with_label("Чтения результата USSD команды");
+    let button_result_ussd_command = gtk::Button::with_label("Чтение результата");
+    button_result_ussd_command.set_tooltip_text(Some("Чтение результата USSD команды"));
     button_result_ussd_command.set_css_classes(&["button"]);
     let text_result_ussd =gtk::TextBuffer::new(None);
     let textview =gtk::TextView::with_buffer(&text_result_ussd);
@@ -1231,6 +1268,8 @@ fn build_ui(app: &adw::Application) {
     button_sms_output_send.connect_clicked(clone!(
         #[weak]
         edit_ip_address,
+        #[weak]
+        model_sms_output_object,
         move |_| {
         let phone = edit_sms_output_phone.text().to_string();
         let text = buffer_sms_output_text.text(&buffer_sms_output_text.start_iter(), &buffer_sms_output_text.end_iter(), false).to_string();
@@ -1302,11 +1341,11 @@ fn build_ui(app: &adw::Application) {
     let model_contact_remove=model_contact_object.clone();
     button_contact_clear.connect_clicked(
         move |_x1|{
-        model_contact_remove.remove_all();
-        let sql ="DELETE FROM contact;".to_string();
-        Config::sql_execute(sql);
+            model_contact_remove.remove_all();
+            let sql ="DELETE FROM contact;".to_string();
+            Config::sql_execute(sql);
 
-    });
+        });
 
     button_contact_csv.connect_clicked(move |_x1| {
         let file_filter = gtk::FileFilter::new();
@@ -1369,6 +1408,8 @@ fn build_ui(app: &adw::Application) {
         times,
         #[weak]
         label_met_new_phone_input,
+        #[weak]
+        model_phone_object,
         move |_b| {
         let address = edit_ip_address.text().to_string();
 
@@ -1536,6 +1577,8 @@ fn build_ui(app: &adw::Application) {
         times,
         #[weak]
         label_met_new_sms_input,
+        #[weak]
+        model_sms_input_object,
         move |b|{
         b.set_sensitive(false);
         let address = edit_ip_address.text().to_string();
@@ -1588,6 +1631,45 @@ fn build_ui(app: &adw::Application) {
         }
 
     }));
+    button_contact_clear.connect_clicked(clone!(
+        #[weak]
+        model_contact_object,
+        move |_x1|{
+        model_contact_object.remove_all();
+        let sql ="DELETE FROM contact;".to_string();
+        Config::sql_execute(sql);
+
+    }));
+
+    button_sms_input_clear.connect_clicked(clone!(
+        #[weak]
+        model_sms_input_object,
+        move |_x1|{
+            model_sms_input_object.remove_all();
+            let sql ="DELETE FROM sms_input;".to_string();
+            Config::sql_execute(sql);
+        }
+    ));
+
+    button_sms_output_clear.connect_clicked(clone!(
+        #[weak]
+        model_sms_output_object,
+        move |_x1|{
+            model_sms_output_object.remove_all();
+            let sql ="DELETE FROM sms_output;".to_string();
+            Config::sql_execute(sql);
+
+        }));
+
+    button_list_phone_clear.connect_clicked(clone!(
+        #[weak]
+        model_phone_object,
+        move |_x1|{
+            model_phone_object.remove_all();
+            let sql ="DELETE FROM phone_input;".to_string();
+            Config::sql_execute(sql);
+        }
+    ));
 
     let sender_info= sender.clone();
     let regular_monitoring_info= clone!(
@@ -1609,12 +1691,12 @@ fn build_ui(app: &adw::Application) {
         let address = edit_ip_address.text().to_string();
         let log= match Info::connect(address) {
             Ok(info)=>{
-                flex_box_battery.set_visible(true);
+                //flex_box_battery.set_visible(true);
                 flex_box_sim.set_visible(true);
                 info
             },
             Err(error)=>{
-                flex_box_battery.set_visible(false);
+                //flex_box_battery.set_visible(false);
                 flex_box_sim.set_visible(false);
                 times.set_markup(format!("{}", error).as_str());
                 let sender = sender_info.clone();
@@ -1622,10 +1704,11 @@ fn build_ui(app: &adw::Application) {
                 return ControlFlow::Break
             }
         };
-        label_battery_charge.set_markup(format!("{}", log.info.battery.charge).as_str());
-        label_battery_level.set_markup(format!("🔋 {}%", level.get_str(log.info.battery.level)).as_str());
-        label_battery_temperature.set_markup(format!("🌡{}°C", level_tep.get_str(log.info.battery.temperature)).as_str());
-        label_battery_status.set_markup(format!("{}", log.info.battery.status).as_str());
+        text_battery_param.set_text( format!(
+                "{}🔋 {}% 🌡{}°C \n{}", log.info.battery.charge,
+                level.get_str(log.info.battery.level),
+                level_tep.get_str(log.info.battery.temperature),
+                log.info.battery.status).as_str());
         label_network_type.set_markup(format!("📶{}",log.info.signal.network_type).as_str());
         label_sim_operator_name.set_markup(format!("{}", log.info.signal.sim_operator_name).as_str());
         label_sim_operator.set_markup(format!("{}",log.info.signal.sim_operator).as_str());
