@@ -17,8 +17,8 @@ impl ReadJsonAndroid for PhoneCount {}
 
 
 impl PhoneDelete {
-    pub fn connect(address: String, param: &str)->Result<PhoneDelete, String>{
-        match PhoneCount::connect(address, CommandSend::DelPhone, param){
+    pub async fn connect(address: String, param: &str)->Result<PhoneDelete, String>{
+        match PhoneCount::connect(address, CommandSend::DelPhone, param).await{
             Ok((_phone,_json))=>Ok(PhoneDelete {_phone, _json}),
             Err(e)=> Err(e)
         }

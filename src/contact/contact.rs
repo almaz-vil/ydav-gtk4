@@ -23,8 +23,8 @@ pub struct ContactLog {
 
 impl ReadJsonAndroid for Contacts {}
 impl ContactLog {
-    pub  fn connect(address: String)->Result<ContactLog, String>{
-        match Contacts::connect(address, CommandSend::CONTACT, ""){
+    pub  async fn connect(address: String)->Result<ContactLog, String>{
+        match Contacts::connect(address, CommandSend::CONTACT, "").await{
             Ok((contacts,json))=> Ok(ContactLog { contacts, json}),
             Err(e)=> Err(e)
         }

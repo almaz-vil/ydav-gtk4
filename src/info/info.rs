@@ -36,8 +36,8 @@ pub struct InfoLog{
 
 impl ReadJsonAndroid for Phones{}
 impl InfoLog{
-    pub fn connect(address: String)->Result<InfoLog, String>{
-        match Phones::connect(address, CommandSend::INFO, ""){
+    pub async fn connect(address: String)->Result<InfoLog, String>{
+        match Phones::connect(address, CommandSend::INFO, "").await{
             Ok((info,json))=> Ok(InfoLog{info, json }),
             Err(e)=> Err(e)
         }

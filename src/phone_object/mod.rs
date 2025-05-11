@@ -14,7 +14,7 @@ glib::wrapper! {
 impl PhoneObject {
     // Create an object instance of the new type.
     pub fn new() -> Self {
-        glib::Object::new()
+        Object::new()
     }
     pub fn factorion(self, list_item: &Object, property_name: &str)
     {

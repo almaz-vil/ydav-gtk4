@@ -21,14 +21,14 @@ pub struct UssdLog {
 impl ReadJsonAndroid for Ussd {}
 
 impl UssdLog {
-    pub fn send(address: String, ussd_text: String) ->Result<UssdLog, String>{
-        match Ussd::connect(address, CommandSend::UssdSend, &ussd_text){
+    pub async fn send(address: String, ussd_text: String) ->Result<UssdLog, String>{
+        match Ussd::connect(address, CommandSend::UssdSend, &ussd_text).await{
             Ok((ussd,json))=>Ok(UssdLog { ussd, json}),
             Err(e)=> Err(e)
         }
     }
-    pub fn response(address: String) ->Result<UssdLog, String>{
-        match Ussd::connect(address, CommandSend::UssdRespond, ""){
+    pub async fn response(address: String) ->Result<UssdLog, String>{
+        match Ussd::connect(address, CommandSend::UssdRespond, "").await{
             Ok((ussd,json))=>Ok(UssdLog { ussd, json}),
             Err(e)=> Err(e)
         }

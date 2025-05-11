@@ -27,14 +27,14 @@ pub struct SmsOutputLog {
 impl ReadJsonAndroid for StatusSMSOutput{}
 
 impl SmsOutputLog {
-    pub fn send(address: String, sms_output_param: SmsOutputParam ) ->Result<SmsOutputLog, String>{
-        match StatusSMSOutput::connect(address, CommandSend::SmsOutput, &sms_output_param.json()){
+    pub async fn send(address: String, sms_output_param: SmsOutputParam ) ->Result<SmsOutputLog, String>{
+        match StatusSMSOutput::connect(address, CommandSend::SmsOutput, &sms_output_param.json()).await{
             Ok((status,json))=>Ok(SmsOutputLog {status, json}),
             Err(e)=> Err(e)
         }
     }
-    pub fn status(address: String, id: &str) ->Result<SmsOutputLog, String>{
-        match StatusSMSOutput::connect(address, CommandSend::SmsOutputStatus, id){
+    pub async fn status(address: String, id: &str) ->Result<SmsOutputLog, String>{
+        match StatusSMSOutput::connect(address, CommandSend::SmsOutputStatus, id).await{
             Ok((status,json))=>Ok(SmsOutputLog {status, json}),
             Err(e)=> Err(e)
         }

@@ -18,8 +18,8 @@ impl ReadJsonAndroid for SmsCount {}
 
 
 impl SmsInputDelete{
-    pub fn connect(address: String, param: &str)->Result<SmsInputDelete, String>{
-        match SmsCount::connect(address, CommandSend::DelSmsInput, param){
+    pub async fn connect(address: String, param: &str)->Result<SmsInputDelete, String>{
+        match SmsCount::connect(address, CommandSend::DelSmsInput, param).await{
             Ok((sms,json))=>Ok(SmsInputDelete { _sms: sms, _json: json }),
             Err(e)=> Err(e)
         }
