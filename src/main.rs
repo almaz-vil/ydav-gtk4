@@ -170,7 +170,7 @@ fn build_ui(app: &adw::Application) {
         gtk_box_politic.append(&button_close);
 
         let window = gtk::Window::builder()
-            .title("Ydav-gtk v1.3.0")
+            .title("Ydav-gtk beta async v1.3.1")
             .height_request(320)
             .width_request(360)
             .child(&gtk_box_politic)
@@ -210,7 +210,7 @@ fn build_ui(app: &adw::Application) {
             .build();
         scrolled_politic.set_vexpand(true);
         scrolled_politic.set_vexpand_set(true);
-        text_politic.set_text("Программа клиент Ydav-gtk4 для сервера Ydav2024 for Android версия: 1.3.0");
+        text_politic.set_text("Программа клиент Ydav-gtk4 beta async для сервера Ydav2024 for Android версия: 1.3.0");
         let button_git = gtk::Button::with_label("https://ydav-android.p-k-53.ru/");
         button_git.set_css_classes(&["button"]);
         button_git.set_tooltip_text(Some("Нажмите для копирования адреса в буфер обмена"));
@@ -839,19 +839,40 @@ fn build_ui(app: &adw::Application) {
     let button_ussd_panel = gtk::Button::with_label("USSD");
     let button_log_panel = gtk::Button::with_label("✎Лог");
     button_signal_panel.set_css_classes(&["button_panel_hover"]);
-    button_phone_panel.set_css_classes(&["button"]);
-    button_contact_panel.set_css_classes(&["button"]);
-    button_sms_input_panel.set_css_classes(&["button"]);
-    button_sms_output_panel.set_css_classes(&["button"]);
-    button_ussd_panel.set_css_classes(&["button"]);
-    button_log_panel.set_css_classes(&["button"]);
-    flex_box.append(&button_signal_panel);
-    flex_box.append(&button_phone_panel);
-    flex_box.append(&button_contact_panel);
-    flex_box.append(&button_sms_input_panel);
-    flex_box.append(&button_sms_output_panel);
-    flex_box.append(&button_ussd_panel);
-    flex_box.append(&button_log_panel);
+    button_phone_panel.set_css_classes(&["button_panel"]);
+    button_contact_panel.set_css_classes(&["button_panel"]);
+    button_sms_input_panel.set_css_classes(&["button_panel"]);
+    button_sms_output_panel.set_css_classes(&["button_panel"]);
+    button_ussd_panel.set_css_classes(&["button_panel"]);
+    button_log_panel.set_css_classes(&["button_panel"]);
+    let flex_box_child = gtk::FlowBoxChild::new();
+    flex_box_child.set_css_classes(&["gtk_flow_box_child"]);
+    flex_box_child.set_child(Some(&button_signal_panel));
+    flex_box.append(&flex_box_child);
+    let flex_box_child = gtk::FlowBoxChild::new();
+    flex_box_child.set_css_classes(&["gtk_flow_box_child"]);
+    flex_box_child.set_child(Some(&button_phone_panel));
+    flex_box.append(&flex_box_child);
+    let flex_box_child = gtk::FlowBoxChild::new();
+    flex_box_child.set_css_classes(&["gtk_flow_box_child"]);
+    flex_box_child.set_child(Some(&button_contact_panel));
+    flex_box.append(&flex_box_child);
+    let flex_box_child = gtk::FlowBoxChild::new();
+    flex_box_child.set_css_classes(&["gtk_flow_box_child"]);
+    flex_box_child.set_child(Some(&button_sms_input_panel));
+    flex_box.append(&flex_box_child);
+    let flex_box_child = gtk::FlowBoxChild::new();
+    flex_box_child.set_css_classes(&["gtk_flow_box_child"]);
+    flex_box_child.set_child(Some(&button_sms_output_panel));
+    flex_box.append(&flex_box_child);
+    let flex_box_child = gtk::FlowBoxChild::new();
+    flex_box_child.set_css_classes(&["gtk_flow_box_child"]);
+    flex_box_child.set_child(Some(&button_ussd_panel));
+    flex_box.append(&flex_box_child);
+    let flex_box_child = gtk::FlowBoxChild::new();
+    flex_box_child.set_css_classes(&["gtk_flow_box_child"]);
+    flex_box_child.set_child(Some(&button_log_panel));
+    flex_box.append(&flex_box_child);
     stack.add_titled(&flex_box_signal, Some("Signal"), "Сигнал и батарейка");
     stack.add_titled(&flex_box_list_phone, Some("Phone"), "✆Входящие звонки");
     stack.add_titled(&flex_box_contact,Some("Contact"),"Контакты");
@@ -892,12 +913,12 @@ fn build_ui(app: &adw::Application) {
         #[weak]
         button_log_panel,
         move|_|{
-        button_signal_panel.set_css_classes(&["button"]);
-        button_phone_panel.set_css_classes(&["button"]);
-        button_contact_panel.set_css_classes(&["button"]);
-        button_sms_input_panel.set_css_classes(&["button"]);
-        button_sms_output_panel.set_css_classes(&["button"]);
-        button_ussd_panel.set_css_classes(&["button"]);
+        button_signal_panel.set_css_classes(&["button_panel"]);
+        button_phone_panel.set_css_classes(&["button_panel"]);
+        button_contact_panel.set_css_classes(&["button_panel"]);
+        button_sms_input_panel.set_css_classes(&["button_panel"]);
+        button_sms_output_panel.set_css_classes(&["button_panel"]);
+        button_ussd_panel.set_css_classes(&["button_panel"]);
         button_log_panel.set_css_classes(&["button_panel_hover"]);
         flex_box_signal.set_visible(false);
         flex_box_list_phone.set_visible(false);
@@ -937,13 +958,13 @@ fn build_ui(app: &adw::Application) {
         #[weak]
         button_log_panel,
         move|_|{
-        button_signal_panel.set_css_classes(&["button"]);
-        button_phone_panel.set_css_classes(&["button"]);
-        button_contact_panel.set_css_classes(&["button"]);
-        button_sms_input_panel.set_css_classes(&["button"]);
-        button_sms_output_panel.set_css_classes(&["button"]);
+        button_signal_panel.set_css_classes(&["button_panel"]);
+        button_phone_panel.set_css_classes(&["button_panel"]);
+        button_contact_panel.set_css_classes(&["button_panel"]);
+        button_sms_input_panel.set_css_classes(&["button_panel"]);
+        button_sms_output_panel.set_css_classes(&["button_panel"]);
         button_ussd_panel.set_css_classes(&["button_panel_hover"]);
-        button_log_panel.set_css_classes(&["button"]);
+        button_log_panel.set_css_classes(&["button_panel"]);
         flex_box_signal.set_visible(false);
         flex_box_list_phone.set_visible(false);
         flex_box_contact.set_visible(false);
@@ -983,13 +1004,13 @@ fn build_ui(app: &adw::Application) {
         #[weak]
         button_log_panel,
         move|_|{
-        button_signal_panel.set_css_classes(&["button"]);
-        button_phone_panel.set_css_classes(&["button"]);
-        button_contact_panel.set_css_classes(&["button"]);
-        button_sms_input_panel.set_css_classes(&["button"]);
+        button_signal_panel.set_css_classes(&["button_panel"]);
+        button_phone_panel.set_css_classes(&["button_panel"]);
+        button_contact_panel.set_css_classes(&["button_panel"]);
+        button_sms_input_panel.set_css_classes(&["button_panel"]);
         button_sms_output_panel.set_css_classes(&["button_panel_hover"]);
-        button_ussd_panel.set_css_classes(&["button"]);
-        button_log_panel.set_css_classes(&["button"]);
+        button_ussd_panel.set_css_classes(&["button_panel"]);
+        button_log_panel.set_css_classes(&["button_panel"]);
         flex_box_signal.set_visible(false);
         flex_box_list_phone.set_visible(false);
         flex_box_contact.set_visible(false);
@@ -1030,13 +1051,13 @@ fn build_ui(app: &adw::Application) {
         #[weak]
         button_log_panel,
         move|_|{
-        button_signal_panel.set_css_classes(&["button"]);
-        button_phone_panel.set_css_classes(&["button"]);
-        button_contact_panel.set_css_classes(&["button"]);
+        button_signal_panel.set_css_classes(&["button_panel"]);
+        button_phone_panel.set_css_classes(&["button_panel"]);
+        button_contact_panel.set_css_classes(&["button_panel"]);
         button_sms_input_panel.set_css_classes(&["button_panel_hover"]);
-        button_sms_output_panel.set_css_classes(&["button"]);
-        button_ussd_panel.set_css_classes(&["button"]);
-        button_log_panel.set_css_classes(&["button"]);
+        button_sms_output_panel.set_css_classes(&["button_panel"]);
+        button_ussd_panel.set_css_classes(&["button_panel"]);
+        button_log_panel.set_css_classes(&["button_panel"]);
         flex_box_signal.set_visible(false);
         flex_box_list_phone.set_visible(false);
         flex_box_contact.set_visible(false);
@@ -1076,13 +1097,13 @@ fn build_ui(app: &adw::Application) {
         #[weak]
         button_log_panel,
         move|_|{
-        button_signal_panel.set_css_classes(&["button"]);
-        button_phone_panel.set_css_classes(&["button"]);
+        button_signal_panel.set_css_classes(&["button_panel"]);
+        button_phone_panel.set_css_classes(&["button_panel"]);
         button_contact_panel.set_css_classes(&["button_panel_hover"]);
-        button_sms_input_panel.set_css_classes(&["button"]);
-        button_sms_output_panel.set_css_classes(&["button"]);
-        button_ussd_panel.set_css_classes(&["button"]);
-        button_log_panel.set_css_classes(&["button"]);
+        button_sms_input_panel.set_css_classes(&["button_panel"]);
+        button_sms_output_panel.set_css_classes(&["button_panel"]);
+        button_ussd_panel.set_css_classes(&["button_panel"]);
+        button_log_panel.set_css_classes(&["button_panel"]);
         flex_box_signal.set_visible(false);
         flex_box_list_phone.set_visible(false);
         flex_box_contact.set_visible(true);
@@ -1107,7 +1128,6 @@ fn build_ui(app: &adw::Application) {
         flex_box_ussd_command,
         #[weak]
         flex_box_log,
-
         #[weak]
         button_signal_panel,
         #[weak]
@@ -1123,13 +1143,13 @@ fn build_ui(app: &adw::Application) {
         #[weak]
         button_log_panel,
         move|_|{
-        button_signal_panel.set_css_classes(&["button"]);
+        button_signal_panel.set_css_classes(&["button_panel"]);
         button_phone_panel.set_css_classes(&["button_panel_hover"]);
-        button_contact_panel.set_css_classes(&["button"]);
-        button_sms_input_panel.set_css_classes(&["button"]);
-        button_sms_output_panel.set_css_classes(&["button"]);
-        button_ussd_panel.set_css_classes(&["button"]);
-        button_log_panel.set_css_classes(&["button"]);
+        button_contact_panel.set_css_classes(&["button_panel"]);
+        button_sms_input_panel.set_css_classes(&["button_panel"]);
+        button_sms_output_panel.set_css_classes(&["button_panel"]);
+        button_ussd_panel.set_css_classes(&["button_panel"]);
+        button_log_panel.set_css_classes(&["button_panel"]);
         flex_box_signal.set_visible(false);
         flex_box_list_phone.set_visible(true);
         flex_box_contact.set_visible(false);
@@ -1171,12 +1191,12 @@ fn build_ui(app: &adw::Application) {
         button_log_panel,
         move|_|{
         button_signal_panel.set_css_classes(&["button_panel_hover"]);
-        button_phone_panel.set_css_classes(&["button"]);
-        button_contact_panel.set_css_classes(&["button"]);
-        button_sms_input_panel.set_css_classes(&["button"]);
-        button_sms_output_panel.set_css_classes(&["button"]);
-        button_ussd_panel.set_css_classes(&["button"]);
-        button_log_panel.set_css_classes(&["button"]);
+        button_phone_panel.set_css_classes(&["button_panel"]);
+        button_contact_panel.set_css_classes(&["button_panel"]);
+        button_sms_input_panel.set_css_classes(&["button_panel"]);
+        button_sms_output_panel.set_css_classes(&["button_panel"]);
+        button_ussd_panel.set_css_classes(&["button_panel"]);
+        button_log_panel.set_css_classes(&["button_panel"]);
         flex_box_signal.set_visible(true);
         flex_box_list_phone.set_visible(false);
         flex_box_contact.set_visible(false);
@@ -1186,7 +1206,7 @@ fn build_ui(app: &adw::Application) {
         flex_box_log.set_visible(false);
     }));
 
-    flex_box.set_css_classes(&["panel_win"]);
+    flex_box.set_css_classes(&["panel_win_flex"]);
     stack_switcher.set_css_classes(&["button"]);
     let gtk_box_stack=gtk::Box::builder()
         .orientation(Vertical)
@@ -1200,7 +1220,7 @@ fn build_ui(app: &adw::Application) {
     gtk_box_stack.append(&status);
     let window = ApplicationWindow::builder()
         .application(app)
-        .title("Ydav-gtk v.1.3.0")
+        .title("Ydav-gtk beta async v.1.3.1")
         .child(&gtk_box_stack)
         .icon_name("ru_dimon_ydav_2024")
         .build();
@@ -1392,24 +1412,7 @@ fn build_ui(app: &adw::Application) {
     });
     let mut level: Level = Level(f64::default());
     let mut level_tep: Level = Level(f64::default());
-  /*  glib::spawn_future_local( clone!(
-            #[weak]
-            edit_ip_address,
-            #[weak]
-            button_stop_info,
-            async move {
 
-                while let Ok(enable) = receiver.recv().await{
-                    edit_ip_address.set_visible(enable);
-                    if !enable {
-                        button_stop_info.set_label("⏹");
-                    }else {
-                        button_stop_info.set_label("▶");
-                    }
-                }
-            }
-        ));
-*/
     button_phone_get.connect_clicked(clone!(
         #[weak]
         edit_ip_address,
