@@ -5,6 +5,8 @@ use glib::subclass::prelude::*;
 
 #[derive(Default)]
 pub struct ContactObject {
+    id_na_anrdoid: RefCell<Option<String>>,
+    id: RefCell<i64>,
     name: RefCell<Option<String>>,
     phone: RefCell<Option<String>>,
 }
@@ -23,6 +25,10 @@ impl ObjectImpl for ContactObject {
         static PROPERTIES: OnceLock<Vec<glib::ParamSpec>> = OnceLock::new();
         PROPERTIES.get_or_init(|| {
             vec![
+                glib::ParamSpecString::builder("idnaandroid")
+                    .build(),
+                glib::ParamSpecInt64::builder("id")
+                    .build(),
                 glib::ParamSpecString::builder("name")
                     .build(),
                 glib::ParamSpecString::builder("phone")
@@ -33,6 +39,18 @@ impl ObjectImpl for ContactObject {
 
     fn set_property(&self, _id: usize, value: &glib::Value, pspec: &glib::ParamSpec) {
         match pspec.name() {
+            "idnaandroid" => {
+                let id = value
+                    .get()
+                    .expect("type conformity checked by `Object::set_property`");
+                self.id_na_anrdoid.replace(id);
+            },
+            "id" => {
+                let id = value
+                    .get()
+                    .expect("type conformity checked by `Object::set_property`");
+                self.id.replace(id);
+            },
             "name" => {
                 let name = value
                     .get()
@@ -51,6 +69,8 @@ impl ObjectImpl for ContactObject {
 
     fn property(&self, _id: usize, pspec: &glib::ParamSpec) -> glib::Value {
         match pspec.name() {
+            "idnaandroid" => self.id_na_anrdoid.borrow().to_value(),
+            "id" => self.id.borrow().to_value(),
             "name" => self.name.borrow().to_value(),
             "phone" => self.phone.borrow().to_value(),
             _ => unimplemented!(),

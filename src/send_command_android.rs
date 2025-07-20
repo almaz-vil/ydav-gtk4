@@ -4,6 +4,7 @@ pub enum CommandSend{
     INFO,
     PHONE,
     CONTACT,
+    DelContact,
     SmsInput,
     DelSmsInput,
     DelPhone,
@@ -29,6 +30,8 @@ impl CommandSend {
                 Command{ command: "PHONE".to_string(), param: param.to_string()}.json()}
             CommandSend::CONTACT => {
                 Command{ command: "CONTACT".to_string(), param: param.to_string()}.json()}
+            CommandSend::DelContact => {
+                Command{ command: "DELETE_CONTACT".to_string(), param: param.to_string()}.json()}
             CommandSend::SmsInput => {
                 Command{ command: "SMS_INPUT".to_string(), param: param.to_string()}.json()}
             CommandSend::DelSmsInput => {

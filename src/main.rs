@@ -15,6 +15,7 @@ mod sms_output_object;
 mod sms_output;
 mod config;
 mod ussd;
+mod contact_delete;
 
 use crate::ussd::Ussd;
 use crate::config::Config;
@@ -200,60 +201,60 @@ fn build_ui(app: &adw::Application) {
             #[weak]
             clipboard,
             move |_x1| {
-        let text_politic =gtk::TextBuffer::new(None);
-        let textview =gtk::TextView::with_buffer(&text_politic);
-        textview.set_wrap_mode(WrapMode::Word);
-        textview.set_buffer(Some(&text_politic));
-        let scrolled_politic =gtk::ScrolledWindow::builder()
-            .child(&textview)
-            .propagate_natural_width(true)
-            .build();
-        scrolled_politic.set_vexpand(true);
-        scrolled_politic.set_vexpand_set(true);
-        text_politic.set_text("Программа клиент Ydav-gtk4 beta async для сервера Ydav2024 for Android версия: 1.3.0");
-        let button_git = gtk::Button::with_label("https://ydav-android.p-k-53.ru/");
-        button_git.set_css_classes(&["button"]);
-        button_git.set_tooltip_text(Some("Нажмите для копирования адреса в буфер обмена"));
-        button_git.connect_clicked(clone!(
-            #[weak]
-            clipboard,
-            move |b|{
-                clipboard.set_text(b.label().unwrap().as_str());
-            }
-        ));
-        let button_www = gtk::Button::with_label("https://github.com/almaz-vil/ydav-gtk4.git");
-        button_www.set_css_classes(&["button"]);
-        button_www.set_tooltip_text(Some("Нажмите для копирования адреса в буфер обмена"));
-        button_www.connect_clicked(clone!(
-            #[weak]
-            clipboard,
-            move |b|{
-                clipboard.set_text(b.label().unwrap().as_str());
-            }
-        ));
-        let button_close = gtk::Button::with_label("Хорошо");
-        button_close.set_css_classes(&["button"]);
-        let gtk_box_politic = gtk::Box::builder()
-            .orientation(Vertical)
-            .build();
-        gtk_box_politic.set_css_classes(&["panel_win"]);
-        gtk_box_politic.append(&button_git);
-        gtk_box_politic.append(&button_www);
-        gtk_box_politic.append(&scrolled_politic);
-        gtk_box_politic.append(&button_close);
+            let text_politic =gtk::TextBuffer::new(None);
+            let textview =gtk::TextView::with_buffer(&text_politic);
+            textview.set_wrap_mode(WrapMode::Word);
+            textview.set_buffer(Some(&text_politic));
+            let scrolled_politic =gtk::ScrolledWindow::builder()
+                .child(&textview)
+                .propagate_natural_width(true)
+                .build();
+            scrolled_politic.set_vexpand(true);
+            scrolled_politic.set_vexpand_set(true);
+            text_politic.set_text("Программа клиент Ydav-gtk4 beta async для сервера Ydav2024 for Android версия: 1.3.0");
+            let button_git = gtk::Button::with_label("https://ydav-android.p-k-53.ru/");
+            button_git.set_css_classes(&["button"]);
+            button_git.set_tooltip_text(Some("Нажмите для копирования адреса в буфер обмена"));
+            button_git.connect_clicked(clone!(
+                #[weak]
+                clipboard,
+                move |b|{
+                    clipboard.set_text(b.label().unwrap().as_str());
+                }
+            ));
+            let button_www = gtk::Button::with_label("https://github.com/almaz-vil/ydav-gtk4.git");
+            button_www.set_css_classes(&["button"]);
+            button_www.set_tooltip_text(Some("Нажмите для копирования адреса в буфер обмена"));
+            button_www.connect_clicked(clone!(
+                #[weak]
+                clipboard,
+                move |b|{
+                    clipboard.set_text(b.label().unwrap().as_str());
+                }
+            ));
+            let button_close = gtk::Button::with_label("Хорошо");
+            button_close.set_css_classes(&["button"]);
+            let gtk_box_politic = gtk::Box::builder()
+                .orientation(Vertical)
+                .build();
+            gtk_box_politic.set_css_classes(&["panel_win"]);
+            gtk_box_politic.append(&button_git);
+            gtk_box_politic.append(&button_www);
+            gtk_box_politic.append(&scrolled_politic);
+            gtk_box_politic.append(&button_close);
 
-        let window = gtk::Window::builder()
-            .title("Ydav-gtk")
-            .height_request(320)
-            .width_request(360)
-            .child(&gtk_box_politic)
-            .icon_name("ru_dimon_ydav_2024")
-            .build();
-        let win = window.clone();
-        button_close.connect_clicked(move |_x1| {
-            win.close();
-        });
-        window.present();
+            let window = gtk::Window::builder()
+                .title("Ydav-gtk")
+                .height_request(320)
+                .width_request(360)
+                .child(&gtk_box_politic)
+                .icon_name("ru_dimon_ydav_2024")
+                .build();
+            let win = window.clone();
+            button_close.connect_clicked(move |_x1| {
+                win.close();
+            });
+            window.present();
 
     }));
     flex_box_signal.append(&button_about);
@@ -302,7 +303,7 @@ fn build_ui(app: &adw::Application) {
     let no_selection_contact_model = gtk::NoSelection::new(Some(model_contact_object.clone()));
     let selection_contact_model = gtk::SingleSelection::new(Some(no_selection_contact_model));
     let connection = sqlite::open(home_dir().join("ydav2024-data")).expect("Ошибка базы данных");
-    let query = "SELECT name, phone FROM contact ORDER BY name ASC";
+    let query = "SELECT _id, id_na_android, name, phone FROM contact ORDER BY name ASC";
     let mut statement = match connection.prepare(query) {
         Ok(st)=> st,
         Err(e) => {
@@ -327,11 +328,15 @@ fn build_ui(app: &adw::Application) {
         }
     };
     while let Ok(State::Row) = statement.next() {
+        let id = statement.read::<i64,_>("_id").unwrap();
         let name = statement.read::<String,_>("name").unwrap();
         let phone = statement.read::<String,_>("phone").unwrap();
+        let id_na_android = statement.read::<String,_>("id_na_android").unwrap();
         let contact_object = contact_object::ContactObject::new();
         contact_object.set_property("name", name.as_str());
         contact_object.set_property("phone", phone.as_str());
+        contact_object.set_property("idnaandroid", id_na_android.to_value());
+        contact_object.set_property("id", id);
         model_contact_object.append(&contact_object);
     }
     let column_view_contact = gtk::ColumnView::new(Some(selection_contact_model.clone()));
@@ -685,8 +690,12 @@ fn build_ui(app: &adw::Application) {
     let button_contact_clear=gtk::Button::builder()
         .label("Удалить все")
         .build();
+    let button_contact_delete_selection=gtk::Button::builder()
+        .label("Удалить с телефона выделеные")
+        .build();
     button_contact_csv.set_css_classes(&["button"]);
     button_contact_clear.set_css_classes(&["button"]);
+    button_contact_delete_selection.set_css_classes(&["button"]);
     let csv_model_contact = model_contact_object.clone();
     let flex_box_contact=gtk::Box::builder()
         .orientation(Vertical).build();
@@ -694,6 +703,7 @@ fn build_ui(app: &adw::Application) {
     let flex_box_contect_button = gtk::FlowBox::new();
     flex_box_contect_button.append(&button_contact_csv);
     flex_box_contect_button.append(&button_contact_clear);
+    flex_box_contect_button.append(&button_contact_delete_selection);
     flex_box_contact.append(&flex_box_contect_button);
 
     let label_count_contact = gtk::Label::new(None);
@@ -1269,7 +1279,227 @@ fn build_ui(app: &adw::Application) {
             }
         }
     }
+  button_contact_delete_selection.connect_clicked( clone!(
+      #[weak]
+      edit_ip_address,
+      #[weak]
+      times,
+      move |_|{
+          //TODO Окно для работы с контактами
+          let label_contacts_select_count = gtk::Label::new(Some("_"));
+          label_contacts_select_count.set_margin_end(5);
+          let factory_contact_name = gtk::SignalListItemFactory::new();
+          factory_contact_name.connect_setup(move |_, list_item| {
+              add_label_is_item(list_item);
+          });
+          factory_contact_name.connect_bind(move |_, list_item| {
+              list_item
+                  .downcast_ref::<ListItem>()
+                  .expect("Needs to be ListItem")
+                  .item()
+                  .and_downcast::<contact_object::ContactObject>()
+                  .expect("The item has to be an `IntegerObject`.")
+                  .factorion(list_item, "name");
+          });
+          let column_contact_name =ColumnViewColumn::new(Some("Контакты"), Some(factory_contact_name));
+          column_contact_name.set_expand(true);
+          let model_contact_object: gio::ListStore = gio::ListStore::new::<contact_object::ContactObject>();
+          let no_selection_contact_model = gtk::NoSelection::new(Some(model_contact_object.clone()));
+          let selection_contact_model = gtk::SingleSelection::new(Some(no_selection_contact_model));
+          let connection = sqlite::open(home_dir().join("ydav2024-data")).expect("Ошибка базы данных");
+          let query = "SELECT _id, id_na_android, name, phone FROM contact ORDER BY name ASC";
+          let mut statement = match connection.prepare(query) {
+              Ok(st)=> st,
+              Err(e) => { panic!("{}",e);
 
+              }
+          };
+          while let Ok(State::Row) = statement.next() {
+              let id = statement.read::<i64,_>("_id").unwrap();
+              let name = statement.read::<String,_>("name").unwrap();
+              let phone = statement.read::<String,_>("phone").unwrap();
+              let id_na_android = statement.read::<String,_>("id_na_android").unwrap();
+              let contact_object = contact_object::ContactObject::new();
+              contact_object.set_property("name", name.as_str());
+              contact_object.set_property("phone", phone.as_str());
+              contact_object.set_property("idnaandroid", id_na_android.to_value());
+              contact_object.set_property("id", id);
+              model_contact_object.append(&contact_object);
+          }
+          let column_view_contact = gtk::ColumnView::new(Some(selection_contact_model.clone()));
+          column_view_contact.append_column(&column_contact_name);
+          let model_deletes_contact_object: gio::ListStore = gio::ListStore::new::<contact_object::ContactObject>();
+          let no_selection_deletes_contact_model = gtk::NoSelection::new(Some(model_deletes_contact_object.clone()));
+          let selection_deletes_contact_model = gtk::SingleSelection::new(Some(no_selection_deletes_contact_model));
+
+          selection_contact_model.connect_selection_changed(clone!(
+              #[weak]
+              label_contacts_select_count,
+              #[weak]
+              model_deletes_contact_object,
+             move |x, _i, _i1| {
+              let select_contact = x.item(x.selected())
+                  .and_downcast::<contact_object::ContactObject>()
+                  .expect("The item has to be an `SmsOutputObject`.");
+              let id = select_contact.property::<i64>("id");
+              let name = select_contact.property::<String>("name");
+              let phone = select_contact.property::<String>("phone");
+              let id_na_android = select_contact.property::<String>("idnaandroid");
+              let contact_object = contact_object::ContactObject::new();
+              contact_object.set_property("name", name.as_str());
+              contact_object.set_property("phone", phone.as_str());
+              contact_object.set_property("idnaandroid", id_na_android.as_str());
+              contact_object.set_property("id", id);
+              let mut flag = true;
+              for ob in model_deletes_contact_object.into_iter() {
+                  if let Ok(p) = ob {
+                      let idx:String  = p.clone()
+                          .downcast::<contact_object::ContactObject>()
+                          .expect("The item has to be an `IntegerObject`.")
+                          .property("idnaandroid");
+                      if idx == id_na_android {
+                          flag = false;
+                            if let Some(postion)=model_deletes_contact_object.find(&p) {
+                                model_deletes_contact_object.remove(postion);
+                            }
+                          break;
+                      }
+                  }
+              };
+              if flag {
+                  model_deletes_contact_object.append(&contact_object);
+              };
+              let count_select_contact = model_deletes_contact_object.into_iter().count();
+              let count_contact = model_contact_object.into_iter().count();
+              label_contacts_select_count.set_label(format!("Из {} выбрано к удалению {}", count_contact, count_select_contact).as_str());
+          }));
+          let factory_deletes_contact_name = gtk::SignalListItemFactory::new();
+          factory_deletes_contact_name.connect_setup(move |_, list_item| {
+              add_label_is_item(list_item);
+          });
+          factory_deletes_contact_name.connect_bind(move |_, list_item| {
+              list_item
+                  .downcast_ref::<ListItem>()
+                  .expect("Needs to be ListItem")
+                  .item()
+                  .and_downcast::<contact_object::ContactObject>()
+                  .expect("The item has to be an `IntegerObject`.")
+                  .factorion(list_item, "name");
+          });
+          let column_deletes_contact_name =ColumnViewColumn::new(Some("Для удаления"), Some(factory_deletes_contact_name));
+          column_deletes_contact_name.set_expand(true);
+
+          let column_view_deletes_contact = gtk::ColumnView::new(Some(selection_deletes_contact_model.clone()));
+          column_view_deletes_contact.append_column(&column_deletes_contact_name);
+
+          let button_close = gtk::Button::with_label("Закрыть");
+          button_close.set_css_classes(&["button"]);
+          let button_delete = gtk::Button::with_label("Удалить");
+          button_delete.set_css_classes(&["button"]);
+          button_delete.connect_clicked(clone!(
+                        #[weak]
+                        edit_ip_address,
+                        #[weak]
+                        label_contacts_select_count,
+                        #[weak]
+                        times,
+              #[weak]
+              model_deletes_contact_object,
+              move |_b|{
+                   times.set_markup("Запрос отправлен ..");
+                    let mut vec_id=String::new();
+                    let mut vec_id_sql=String::new();
+                    for ob in model_deletes_contact_object.into_iter() {
+                      if let Ok(p) = ob {
+                          let idx:String  = p.clone()
+                              .downcast::<contact_object::ContactObject>()
+                              .expect("The item has to be an `IntegerObject`.")
+                              .property("idnaandroid");
+                          let id:i64  = p.clone()
+                              .downcast::<contact_object::ContactObject>()
+                              .expect("The item has to be an `IntegerObject`.")
+                              .property("id");
+                          if !vec_id.is_empty(){
+                              vec_id.push_str(",");
+                              vec_id_sql.push_str("OR ");
+                          }
+                          vec_id.push_str(idx.as_str());
+                          vec_id_sql.push_str(format!("_id={} ",id).as_str())
+                      }
+                    };
+                    model_deletes_contact_object.remove_all();
+                    glib::spawn_future_local(
+                        clone!(
+                        #[weak]
+                        edit_ip_address,
+                        #[weak]
+                        label_contacts_select_count,
+                        #[weak]
+                        times,
+                        async move {
+                            let address = edit_ip_address.text().to_string();
+                            match contact_delete::ContactDeleteLog::connect(address, vec_id.as_str()).await{
+                                  Ok(count)=>{
+                                    Config::sql_execute(format!("DELETE FROM contact WHERE {}", vec_id_sql));
+                                    label_contacts_select_count.set_label(format!("Удалено {} контактов", count.contacts.count).as_str());
+                                    times.set_markup("");
+                                  }
+                                  Err(error)=>{
+                                        times.set_markup(format!("{}", error).as_str());
+                                        return
+                                  }
+                              };
+                       }
+                      )
+                  );
+              }
+          ));
+          let gtk_box_main_v = gtk::Box::builder()
+              .orientation(Vertical)
+              .build();
+          gtk_box_main_v.set_css_classes(&["panel_win"]);
+          let gtk_box_main_h = gtk::Box::builder()
+              .orientation(Horizontal)
+              .build();
+          let scrolled_contact=gtk::ScrolledWindow::builder()
+              .child(&column_view_contact)
+              .propagate_natural_width(true)
+              .build();
+          scrolled_contact.set_vexpand(true);
+          scrolled_contact.set_vexpand_set(true);
+          let scrolled_deletes_contact=gtk::ScrolledWindow::builder()
+              .child(&column_view_deletes_contact)
+              .propagate_natural_width(true)
+              .build();
+          scrolled_deletes_contact.set_vexpand(true);
+          scrolled_deletes_contact.set_vexpand_set(true);
+          let gtk_box_h_label_button = gtk::Box::builder()
+              .orientation(Horizontal)
+              .build();
+          gtk_box_h_label_button.append(&label_contacts_select_count);
+          gtk_box_h_label_button.append(&button_delete);
+          gtk_box_main_v.append(&gtk_box_h_label_button);
+          gtk_box_main_v.append(&gtk_box_main_h);
+          gtk_box_main_h.append(&scrolled_contact);
+          gtk_box_main_h.append(&scrolled_deletes_contact);
+          gtk_box_main_v.append(&button_close);
+
+          let window = gtk::Window::builder()
+              .title("Ydav-gtk - контакты")
+              .height_request(320)
+              .width_request(360)
+              .child(&gtk_box_main_v)
+              .icon_name("ru_dimon_ydav_2024")
+              .build();
+          let win = window.clone();
+          button_close.connect_clicked(move |_x1| {
+              win.close();
+          });
+          window.present();
+
+
+      }
+  ));
   button_sms_output_send.connect_clicked(clone!(
         #[weak]
         edit_ip_address,
@@ -1605,8 +1835,9 @@ fn build_ui(app: &adw::Application) {
                             let contact_object = contact_object::ContactObject::new();
                             contact_object.set_property("name", contact.name.to_value());
                             contact_object.set_property("phone", r.to_value());
+                            contact_object.set_property("idnaandroid", contact.id.to_value());
                             model_contact_object.append(&contact_object);
-                            sql=sql+format!("INSERT INTO contact (name, phone) VALUES (\"{}\", \"{}\");", contact.name, r).as_str();
+                            sql=sql+format!("INSERT INTO contact (name, phone, id_na_android) VALUES (\"{}\", \"{}\", \"{}\");", contact.name, r, contact.id).as_str();
                         }
                         sql=sql+"COMMIT;";
                         label_count_contact.set_markup(format!(" У Вас контактов <b>{}</b>.", &contact.contacts.contact.len()).as_str());
