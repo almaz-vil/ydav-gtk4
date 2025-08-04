@@ -2,7 +2,7 @@ use gdk4::glib;
 use gdk4::glib::Object;
 use gdk4::prelude::{Cast, CastNone, ObjectExt};
 use gtk4::{Justification, ListItem};
-use gtk4::prelude::ListItemExt;
+use gtk4::prelude::{ListItemExt, WidgetExt};
 mod imp;
 
 // Optionally, define a wrapper type to make it more ergonomic to use from Rust
@@ -26,4 +26,32 @@ impl ContactObject {
         label.set_justify(Justification::Left);
         label.set_label(self.property::<String>(property_name).as_str());
     }
+    pub fn factorion_dy_panel(self, list_item: &Object, property_name_1: &str, property_name_2: &str)
+    {
+        let panel = list_item
+            .downcast_ref::<ListItem>()
+            .expect("Needs to be ListItem")
+            .child()
+            .and_downcast::<gtk4::Box>()
+            .expect("The child has to be a `Label`.");
+        let binding =  panel
+            .first_child()
+            .expect("error");
+        let label_1 = binding
+            .downcast_ref::<gtk4::Label>()
+            .expect("error label");
+        label_1.set_justify(Justification::Left);
+        label_1.set_css_classes(&["label_phone_contact_item"]);
+        label_1.set_label(self.property::<String>(property_name_1).as_str());
+        let binding_2 = panel
+            .last_child()
+            .expect("error");
+        let label_2 = binding_2
+            .downcast_ref::<gtk4::Label>()
+            .expect("error label");
+        label_2.set_justify(Justification::Left);
+        label_2.set_label(self.property::<String>(property_name_2).as_str());
+
+    }
+
 }

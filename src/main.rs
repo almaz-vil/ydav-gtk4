@@ -16,6 +16,7 @@ mod sms_output;
 mod config;
 mod ussd;
 mod contact_delete;
+mod contact_add;
 
 use crate::ussd::Ussd;
 use crate::config::Config;
@@ -39,6 +40,7 @@ use gtk4::Orientation::{Horizontal, Vertical};
 use gtk4::{gio, Align, Justification, WrapMode};
 use sqlite::{Connection, State, Statement};
 use std::io::{BufWriter, Write};
+use crate::contact_add::{ContactAdd, ContactNewParam};
 
 fn main() {
     gio::resources_register_include!("compiled.gresource").unwrap();
@@ -693,9 +695,13 @@ fn build_ui(app: &adw::Application) {
     let button_contact_delete_selection=gtk::Button::builder()
         .label("Удалить с телефона выделеные")
         .build();
+    let button_contact_add=gtk::Button::builder()
+        .label("Добавить контакт")
+        .build();
     button_contact_csv.set_css_classes(&["button"]);
     button_contact_clear.set_css_classes(&["button"]);
     button_contact_delete_selection.set_css_classes(&["button"]);
+    button_contact_add.set_css_classes(&["button"]);
     let csv_model_contact = model_contact_object.clone();
     let flex_box_contact=gtk::Box::builder()
         .orientation(Vertical).build();
@@ -704,6 +710,7 @@ fn build_ui(app: &adw::Application) {
     flex_box_contect_button.append(&button_contact_csv);
     flex_box_contect_button.append(&button_contact_clear);
     flex_box_contect_button.append(&button_contact_delete_selection);
+    flex_box_contect_button.append(&button_contact_add);
     flex_box_contact.append(&flex_box_contect_button);
 
     let label_count_contact = gtk::Label::new(None);
@@ -1279,6 +1286,113 @@ fn build_ui(app: &adw::Application) {
             }
         }
     }
+
+    let model_contact_object_add = model_contact_object.clone();
+    button_contact_add.connect_clicked(clone!(
+        #[weak]
+        model_contact_object_add,
+      #[weak]
+      edit_ip_address,
+      #[weak]
+      times,
+      move |_|{
+          let button_close = gtk::Button::with_label("Закрыть");
+          button_close.set_css_classes(&["button"]);
+          let button_add = gtk::Button::with_label("Добавить");
+          button_add.set_css_classes(&["button"]);
+          let gtk_box_main_v = gtk::Box::builder()
+              .orientation(Vertical)
+              .build();
+          gtk_box_main_v.set_css_classes(&["panel_win"]);
+          let gtk_box_name_h = gtk::Box::builder()
+              .orientation(Horizontal)
+              .build();
+          let gtk_box_phone_h = gtk::Box::builder()
+              .orientation(Horizontal)
+              .build();
+          let label_name = gtk::Label::new(Some("Имя"));
+          let edit_name = gtk::Entry::new();
+          edit_name.set_text("Пушкин Александр Сергеевич");
+          edit_name.set_css_classes(&["edit"]);
+          gtk_box_name_h.append(&label_name);
+          gtk_box_name_h.append(&edit_name);
+          let edit_phone = gtk::Entry::new();
+                edit_phone.set_text("+79013546832");
+          edit_phone.set_css_classes(&["edit"]);
+            let label_phone = gtk::Label::new(Some("Номер"));
+            button_add.connect_clicked(clone!(
+                #[weak]
+                edit_name,
+                #[weak]
+                edit_phone,
+                #[weak]
+                model_contact_object_add,
+                move |_|{
+                    let name = edit_name.text().to_string();
+                    let phone = edit_phone.text().to_string();
+                      glib::spawn_future_local(
+                        clone!(
+                        #[weak]
+                        edit_ip_address,
+                        #[weak]
+                        times,
+                        async move {
+                            let address = edit_ip_address.text().to_string();
+                            let param = ContactNewParam{name, phone};
+                                match ContactAdd::connect(address, param).await{
+                                  Ok(contact_add)=>{
+                                       let id_contact = contact_add.contacts.id;
+                                       if id_contact.len()==0{
+                                            times.set_markup("Ошибка добавления контакта");
+                                        }else{
+                                            let contact_object = contact_object::ContactObject::new();
+                                            contact_object.set_property("name", contact_add.param.name.to_value());
+                                            contact_object.set_property("phone", contact_add.param.phone.to_value());
+                                            contact_object.set_property("idnaandroid", id_contact.to_value());
+                                            model_contact_object_add.append(&contact_object);
+                                            let sql=format!("INSERT INTO contact (name, phone, id_na_android) VALUES (\"{}\", \"{}\", \"{}\");", contact_add.param.name, contact_add.param.phone, id_contact);
+                                            Config::sql_execute(sql);
+                                            times.set_markup("Контакт добавлен");
+                                        }
+
+                                  }
+                                  Err(error)=>{
+                                        times.set_markup(format!("{}", error).as_str());
+                                        return
+                                  }
+                              };
+                       }
+                      )
+                  );
+                }
+            ));
+            gtk_box_phone_h.append(&label_phone);
+          gtk_box_phone_h.append(&edit_phone);
+          let gtk_box_h_button = gtk::Box::builder()
+              .orientation(Horizontal)
+              .build();
+          gtk_box_h_button.append(&button_add);
+          gtk_box_main_v.append(&gtk_box_h_button);
+          gtk_box_main_v.append(&gtk_box_name_h);
+          gtk_box_main_v.append(&gtk_box_phone_h);
+          gtk_box_main_v.append(&button_close);
+
+          let window = gtk::Window::builder()
+              .title("Ydav-gtk - контакты")
+              .height_request(320)
+              .width_request(360)
+              .child(&gtk_box_main_v)
+              .icon_name("ru_dimon_ydav_2024")
+              .build();
+          let win = window.clone();
+          button_close.connect_clicked(move |_x1| {
+              win.close();
+          });
+          window.present();
+
+
+        }
+    ));
   button_contact_delete_selection.connect_clicked( clone!(
       #[weak]
       edit_ip_address,
@@ -1290,7 +1404,7 @@ fn build_ui(app: &adw::Application) {
           label_contacts_select_count.set_margin_end(5);
           let factory_contact_name = gtk::SignalListItemFactory::new();
           factory_contact_name.connect_setup(move |_, list_item| {
-              add_label_is_item(list_item);
+              add_panel_is_item(list_item);
           });
           factory_contact_name.connect_bind(move |_, list_item| {
               list_item
@@ -1299,7 +1413,7 @@ fn build_ui(app: &adw::Application) {
                   .item()
                   .and_downcast::<contact_object::ContactObject>()
                   .expect("The item has to be an `IntegerObject`.")
-                  .factorion(list_item, "name");
+                  .factorion_dy_panel(list_item, "name", "phone");
           });
           let column_contact_name =ColumnViewColumn::new(Some("Контакты"), Some(factory_contact_name));
           column_contact_name.set_expand(true);
@@ -1332,12 +1446,12 @@ fn build_ui(app: &adw::Application) {
           let no_selection_deletes_contact_model = gtk::NoSelection::new(Some(model_deletes_contact_object.clone()));
           let selection_deletes_contact_model = gtk::SingleSelection::new(Some(no_selection_deletes_contact_model));
 
-          selection_contact_model.connect_selection_changed(clone!(
+          selection_contact_model.connect_selected_item_notify(clone!(
               #[weak]
               label_contacts_select_count,
               #[weak]
               model_deletes_contact_object,
-             move |x, _i, _i1| {
+             move |x| {
               let select_contact = x.item(x.selected())
                   .and_downcast::<contact_object::ContactObject>()
                   .expect("The item has to be an `SmsOutputObject`.");
@@ -1375,7 +1489,7 @@ fn build_ui(app: &adw::Application) {
           }));
           let factory_deletes_contact_name = gtk::SignalListItemFactory::new();
           factory_deletes_contact_name.connect_setup(move |_, list_item| {
-              add_label_is_item(list_item);
+              add_panel_is_item(list_item);
           });
           factory_deletes_contact_name.connect_bind(move |_, list_item| {
               list_item
@@ -1384,7 +1498,7 @@ fn build_ui(app: &adw::Application) {
                   .item()
                   .and_downcast::<contact_object::ContactObject>()
                   .expect("The item has to be an `IntegerObject`.")
-                  .factorion(list_item, "name");
+                  .factorion_dy_panel(list_item, "name", "phone");
           });
           let column_deletes_contact_name =ColumnViewColumn::new(Some("Для удаления"), Some(factory_deletes_contact_name));
           column_deletes_contact_name.set_expand(true);

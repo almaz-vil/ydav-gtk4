@@ -122,3 +122,7 @@
   background-color: darkgoldenrod;
   border-top: 2px solid yellow;
 }
+
+.label_phone_contact_item{
+  font-weight: bold;
+}
